@@ -58,7 +58,10 @@ export default function App() {
         if (d.next_step.type === 'question') setMessages(p => [...p, { sender: 'bot', text: d.next_step.symptom, opts: true }]);
         else if (d.next_step.type === 'result') { setMessages(p => [...p, { sender: 'bot', type: 'result', data: d.next_step }]); setAnswers([]); setCurrentStep(null); }
       }
-    } catch { setMessages(p => [...p, { sender: 'bot', text: '⚠️ Backend not reachable. Start the Flask server.' }]); }
+    } catch (err) { 
+      console.error("Chatbot Error:", err);
+      setMessages(p => [...p, { sender: 'bot', text: '⚠️ Connection failed. Please ensure your backend is deployed and its URL is added to the VITE_API_URL environment variable.' }]); 
+    }
     setLoading(false);
   };
 

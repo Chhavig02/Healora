@@ -528,6 +528,7 @@ body {
     border-radius: 0;
   }
   .chat-fab { width: 55px; height: 55px; bottom: 1.5rem; right: 1.5rem; }
+  .ticker-track span { font-size: 0.8rem; gap: 1rem; }
 }
 
 @media (max-width: 480px) {
