@@ -14,7 +14,7 @@
   --shadow-lg: 0 20px 50px rgba(0,97,255,0.12);
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; transition: all 0.3s ease; }
 
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -201,7 +201,7 @@ body {
 .honors-right { color: var(--gray); font-size: 1.1rem; line-height: 1.7; max-width: 50%; }
 
 /* SECTION COMMON */
-.section-container { max-width: 1400px; margin: 0 auto; padding: 0 4rem; }
+.section-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 .section-header { text-align: center; max-width: 600px; margin: 0 auto 3.5rem; }
 .section-tag {
   display: inline-block;
@@ -490,22 +490,22 @@ body {
     height: 100vh;
     background: white;
     flex-direction: column;
-    justify-content: center;
-    padding: 2rem;
+    justify-content: start;
+    padding: 60px 20px 20px;
     gap: 1.5rem;
-    transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: 0.4s ease;
     box-shadow: -10px 0 30px rgba(0,0,0,0.1);
     z-index: 1000;
   }
   .main-nav.active { right: 0; }
-  .main-nav a { font-size: 1.1rem; }
+  .main-nav a { font-size: 1.1rem; width: 100%; text-align: center; }
 
-  .hero-content h1 { font-size: 2.4rem; letter-spacing: -1px; line-height: 1.1; width: 100%; word-break: break-word; }
-  .hero-section { padding: 3rem 0; overflow: hidden; position: relative; width: 100%; }
-  .hero-btns { flex-direction: column; align-items: stretch; gap: 0.8rem; width: 100%; }
-  .btn-pill { width: 100%; display: block; text-align: center; }
+  .hero-content h1 { font-size: 2rem; letter-spacing: -1px; line-height: 1.2; width: 100%; word-break: break-word; }
+  .hero-section { padding: 40px 20px; overflow: hidden; position: relative; width: 100%; gap: 30px; }
+  .hero-btns { flex-direction: column; align-items: stretch; gap: 12px; width: 100%; }
+  .btn-pill { width: 100% !important; display: block; text-align: center; }
   
-  .section-container { padding: 0 1.5rem; }
+  .section-container { padding: 0 20px !important; }
   .advantage-grid { grid-template-columns: 1fr; gap: 3rem; }
   .adv-right-grid { grid-template-columns: 1fr; }
   .adv-card-big { grid-column: 1; grid-row: auto; }
