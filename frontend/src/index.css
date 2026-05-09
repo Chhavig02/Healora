@@ -21,6 +21,7 @@ body {
   background: var(--bg);
   color: var(--dark);
   overflow-x: hidden;
+  width: 100%;
 }
 
 /* HEADER */
@@ -442,6 +443,7 @@ body {
   .hero-content h1 { font-size: 4rem; }
   .hdr-inner { padding: 1rem 2rem; }
   .honors-card { padding: 3rem; gap: 3rem; }
+  .section-container { padding: 0 2rem; }
 }
 
 @media (max-width: 1024px) {
@@ -456,7 +458,8 @@ body {
 }
 
 @media (max-width: 768px) {
-  .hdr-inner { padding: 0.8rem 1.5rem; }
+  .hdr-inner { padding: 0.8rem 1rem; }
+  .logo-link { font-size: 1.3rem; }
   
   .menu-toggle { display: block; }
   .desktop-cta { display: none; }
@@ -481,29 +484,32 @@ body {
     position: fixed;
     top: 0;
     right: -100%;
-    width: 80%;
+    width: 280px;
     height: 100vh;
     background: white;
     flex-direction: column;
     justify-content: center;
     padding: 2rem;
-    gap: 2rem;
-    transition: 0.4s ease;
+    gap: 1.5rem;
+    transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: -10px 0 30px rgba(0,0,0,0.1);
     z-index: 1000;
   }
   .main-nav.active { right: 0; }
-  .main-nav a { font-size: 1.2rem; }
+  .main-nav a { font-size: 1.1rem; }
 
-  .hero-content h1 { font-size: 2.8rem; letter-spacing: -1px; }
-  .hero-section { padding: 3rem 0; }
-  .hero-btns { flex-direction: column; align-items: stretch; }
+  .hero-content h1 { font-size: 2.6rem; letter-spacing: -1px; line-height: 1.15; width: 100%; word-wrap: break-word; }
+  .hero-section { padding: 3rem 0; overflow: hidden; position: relative; }
+  .hero-btns { flex-direction: column; align-items: stretch; gap: 0.8rem; }
+  .btn-pill { width: 100%; }
   
+  .section-container { padding: 0 1.5rem; }
   .advantage-grid { grid-template-columns: 1fr; gap: 3rem; }
   .adv-right-grid { grid-template-columns: 1fr; }
   .adv-card-big { grid-column: 1; grid-row: auto; }
   
   .services-hdr-flex { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
+  .services-scroller-wrap { margin: 0 -1.5rem; padding: 0 1.5rem; }
   
   .testi-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; text-align: center; gap: 2rem; }
@@ -519,17 +525,17 @@ body {
 }
 
 @media (max-width: 480px) {
-  .hero-content h1 { font-size: 2.4rem; }
-  .section-container { padding: 0 1.5rem; }
-  .services-scroller-wrap { margin: 0 -1.5rem; padding: 0 1.5rem; }
-  .hero-simulation { height: 350px; }
-  .dna-wrap { transform: rotate(-35deg) scale(0.6); }
-  .sim-badge { scale: 0.8; }
-  .badge-1 { top: 0; right: 0; }
-  .badge-2 { left: -10%; top: 50%; }
-  .badge-3 { bottom: -10%; right: 0; }
+  .hero-content h1 { font-size: 2.2rem; letter-spacing: -1px; }
+  .hero-subtext { font-size: 1rem; }
+  .hero-simulation { height: 380px; }
+  .dna-wrap { transform: rotate(-35deg) scale(0.55); left: -10%; }
   
-  .section-container { padding: 0 1.5rem; }
-  .honors-left h2 { font-size: 2rem; }
-  .services-title-area h2 { font-size: 2.2rem; }
+  .sim-badge { scale: 0.75; }
+  .badge-1 { top: 0; right: -5%; }
+  .badge-2 { left: -15%; top: 45%; }
+  .badge-3 { bottom: -5%; right: -5%; }
+  
+  .honors-left h2 { font-size: 1.8rem; }
+  .services-title-area h2 { font-size: 2rem; }
+  .adv-left h2 { font-size: 2.2rem; }
 }
