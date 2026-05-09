@@ -537,5 +537,6 @@ body {
   
   .honors-left h2 { font-size: 1.8rem; }
   .services-title-area h2 { font-size: 2rem; }
+  .service-card-tilted { flex: 0 0 280px; height: 380px; }
   .adv-left h2 { font-size: 2.2rem; }
 }
