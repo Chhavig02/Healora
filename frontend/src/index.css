@@ -21,7 +21,8 @@ body {
   background: var(--bg);
   color: var(--dark);
   overflow-x: hidden;
-  width: 100%;
+  width: 100vw;
+  position: relative;
 }
 
 /* HEADER */
@@ -90,9 +91,9 @@ body {
   max-width: 1400px; margin: 0 auto; padding: 0 4rem;
   display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 4rem; align-items: center;
 }
-.hero-content h1 { font-size: 5rem; font-weight: 900; line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -3px; color: var(--dark); }
+.hero-content h1 { font-size: 5rem; font-weight: 900; line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -3px; color: var(--dark); word-wrap: break-word; }
 .hero-subtext { font-size: 1.2rem; color: var(--gray); line-height: 1.6; margin-bottom: 2.5rem; max-width: 500px; }
-.hero-btns { display: flex; gap: 1rem; }
+.hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; }
 .text-gradient { color: var(--blue); font-weight: 900; }
 
 /* Double Helix Simulation */
@@ -192,6 +193,7 @@ body {
   background: var(--blue-light); border-radius: 2.5rem; padding: 4rem 5rem;
   display: flex; justify-content: space-between; align-items: center; gap: 5rem;
   border: 1px solid rgba(0,97,255,0.05);
+  width: 100%;
 }
 .honors-left { max-width: 45%; }
 .honors-left span { color: var(--blue); font-size: 0.95rem; font-weight: 800; display: block; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px; }
@@ -498,10 +500,10 @@ body {
   .main-nav.active { right: 0; }
   .main-nav a { font-size: 1.1rem; }
 
-  .hero-content h1 { font-size: 2.6rem; letter-spacing: -1px; line-height: 1.15; width: 100%; word-wrap: break-word; }
-  .hero-section { padding: 3rem 0; overflow: hidden; position: relative; }
-  .hero-btns { flex-direction: column; align-items: stretch; gap: 0.8rem; }
-  .btn-pill { width: 100%; }
+  .hero-content h1 { font-size: 2.4rem; letter-spacing: -1px; line-height: 1.1; width: 100%; word-break: break-word; }
+  .hero-section { padding: 3rem 0; overflow: hidden; position: relative; width: 100%; }
+  .hero-btns { flex-direction: column; align-items: stretch; gap: 0.8rem; width: 100%; }
+  .btn-pill { width: 100%; display: block; text-align: center; }
   
   .section-container { padding: 0 1.5rem; }
   .advantage-grid { grid-template-columns: 1fr; gap: 3rem; }
@@ -525,18 +527,20 @@ body {
 }
 
 @media (max-width: 480px) {
-  .hero-content h1 { font-size: 2.2rem; letter-spacing: -1px; }
-  .hero-subtext { font-size: 1rem; }
-  .hero-simulation { height: 380px; }
-  .dna-wrap { transform: rotate(-35deg) scale(0.55); left: -10%; }
+  .hero-content h1 { font-size: 1.8rem; letter-spacing: -0.5px; line-height: 1.2; width: 100%; word-break: break-word; }
+  .hero-subtext { font-size: 0.95rem; line-height: 1.5; }
+  .hero-simulation { height: 320px; width: 100%; }
+  .dna-wrap { transform: rotate(-35deg) scale(0.45); left: -20%; }
   
-  .sim-badge { scale: 0.75; }
-  .badge-1 { top: 0; right: -5%; }
-  .badge-2 { left: -15%; top: 45%; }
-  .badge-3 { bottom: -5%; right: -5%; }
+  .sim-badge { scale: 0.65; }
+  .badge-1 { top: -5%; right: -10%; }
+  .badge-2 { left: -20%; top: 40%; }
+  .badge-3 { bottom: -10%; right: -10%; }
   
-  .honors-left h2 { font-size: 1.8rem; }
-  .services-title-area h2 { font-size: 2rem; }
-  .service-card-tilted { flex: 0 0 280px; height: 380px; }
-  .adv-left h2 { font-size: 2.2rem; }
+  .section-container { padding: 0 1rem; }
+  .honors-card { padding: 2rem 1.5rem; border-radius: 1.5rem; }
+  .honors-left h2 { font-size: 1.6rem; }
+  .services-title-area h2 { font-size: 1.8rem; }
+  .service-card-tilted { flex: 0 0 260px; height: 350px; }
+  .adv-left h2 { font-size: 1.8rem; }
 }
