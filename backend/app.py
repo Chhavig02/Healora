@@ -17,9 +17,9 @@ CORS(app)
 # --- AI Logic Ported from original script ---
 
 # Importing the dataset
-training = pd.read_csv('backend/Training.csv')
-testing = pd.read_csv('backend/Testing.csv')
-doc_consult = pd.read_csv('backend/doc_consult.csv')
+training = pd.read_csv('Training.csv')
+testing = pd.read_csv('Testing.csv')
+doc_consult = pd.read_csv('doc_consult.csv')
 
 cols = training.columns
 cols = cols[:-1]
