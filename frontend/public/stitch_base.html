@@ -1,0 +1,310 @@
+﻿<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Healtho âš•ï¸ - AI-Powered Healthcare</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#bdc9c7",
+                        "surface-bright": "#f8fafa",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#f4fffb",
+                        "on-secondary-fixed": "#131d1d",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f8fafa",
+                        "surface-dim": "#d8dada",
+                        "primary-container": "#008376",
+                        "outline": "#6d7a77",
+                        "outline-variant": "#bcc9c6",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e1e3e3",
+                        "on-tertiary-container": "#fffbff",
+                        "tertiary-container": "#73728b",
+                        "on-primary-fixed": "#00201c",
+                        "inverse-primary": "#6fd8c8",
+                        "surface-container-low": "#f2f4f4",
+                        "on-surface": "#191c1d",
+                        "on-secondary-container": "#5b6765",
+                        "error": "#ba1a1a",
+                        "inverse-on-surface": "#eff1f1",
+                        "surface-container": "#eceeee",
+                        "on-tertiary-fixed": "#1a1a2e",
+                        "inverse-surface": "#2e3131",
+                        "on-primary": "#ffffff",
+                        "on-background": "#191c1d",
+                        "on-surface-variant": "#3d4947",
+                        "surface-container-highest": "#e1e3e3",
+                        "primary-fixed": "#8cf5e4",
+                        "surface-container-high": "#e6e8e9",
+                        "on-primary-fixed-variant": "#005048",
+                        "on-secondary-fixed-variant": "#3e4948",
+                        "surface-tint": "#006a60",
+                        "on-tertiary-fixed-variant": "#45455b",
+                        "secondary-container": "#d9e5e3",
+                        "primary-fixed-dim": "#6fd8c8",
+                        "tertiary-fixed": "#e2e0fc",
+                        "secondary": "#55615f",
+                        "primary": "#00685d",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f8fafa",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#c6c4df",
+                        "tertiary": "#5a5a71",
+                        "secondary-fixed": "#d9e5e3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "stack-lg": "3rem",
+                        "container-max": "1280px",
+                        "section-padding-desktop": "120px",
+                        "stack-md": "1.5rem",
+                        "section-padding-mobile": "64px",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "display-lg-mobile": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "display-lg-mobile": ["40px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "display-lg": ["64px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-sm": ["24px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 104, 93, 0.05);
+        }
+        .soft-shadow {
+            box-shadow: 0 12px 40px -10px rgba(0, 104, 93, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="bg-surface-container-lowest/90 backdrop-blur-md dark:bg-inverse-surface/90 sticky top-0 w-full z-50 shadow-sm dark:bg-on-surface/5">
+<div class="flex justify-between items-center max-w-[1280px] mx-auto px-gutter py-4">
+<!-- Brand -->
+<a class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed flex items-center gap-2" href="#">
+                Healtho âš•ï¸
+            </a>
+<!-- Navigation Links -->
+<nav class="hidden md:flex gap-8 items-center font-body-md text-body-md">
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed transition-all duration-300" href="#features">Features</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed transition-all duration-300" href="#services">Services</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed transition-all duration-300" href="#about">About</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed transition-all duration-300" href="#faq">FAQ</a>
+</nav>
+<!-- Action -->
+<div class="flex items-center">
+<button class="bg-primary text-on-primary font-body-md text-body-md font-bold px-6 py-3 rounded-full hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm opacity-100 hover:opacity-80 scale-100 hover:scale-95 transition-transform duration-300">
+                    Start Consultation
+                </button>
+</div>
+</div>
+</header>
+<!-- Hero Section -->
+<section class="relative pt-section-padding-mobile md:pt-section-padding-desktop pb-section-padding-mobile md:pb-section-padding-desktop px-gutter overflow-hidden">
+<div class="max-w-container-max mx-auto grid md:grid-cols-2 gap-stack-lg items-center relative z-10">
+<div class="flex flex-col gap-stack-md">
+<div class="inline-flex items-center gap-2 bg-surface-container text-on-surface font-label-caps text-label-caps px-4 py-2 rounded-full w-max">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">vital_signs</span>
+                    AI-Powered Healthcare
+                </div>
+<h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-background">
+                    Your Partner in Health, Every Step of the Way
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
+                    AI-powered symptom analysis for 41+ conditions. Get instant, empathetic health insights in under 2 minutes.
+                </p>
+<div class="flex flex-wrap gap-4 mt-4">
+<button class="bg-primary text-on-primary font-body-md text-body-md font-bold px-8 py-4 rounded-full hover:bg-primary-container hover:text-on-primary-container transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2">
+                        Start AI Consultation
+                        <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<button class="bg-surface-container-lowest text-primary border border-primary/20 font-body-md text-body-md font-bold px-8 py-4 rounded-full hover:bg-surface-container transition-all duration-300 flex items-center gap-2">
+<span class="material-symbols-outlined">play_circle</span>
+                        See How it Works
+                    </button>
+</div>
+<!-- Stat Badges -->
+<div class="flex flex-wrap gap-6 mt-8 pt-8 border-t border-surface-variant">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div>
+<p class="font-headline-sm text-headline-sm text-on-background">95%</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Accuracy</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+</div>
+<div>
+<p class="font-headline-sm text-headline-sm text-on-background">41+</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Conditions</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<div>
+<p class="font-headline-sm text-headline-sm text-on-background">99%</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Satisfaction</p>
+</div>
+</div>
+</div>
+</div>
+<div class="relative w-full h-[600px] rounded-[3rem] overflow-hidden soft-shadow">
+<img alt="AI Healthcare Interface" class="w-full h-full object-cover" data-alt="A modern, high-key medical setting featuring a sophisticated AI health interface overlaid on a serene, out-of-focus background of a professional clinic. The scene is bright and airy, illuminated by soft white natural light, emphasizing a clinical yet empathetic aesthetic. Subtle teal (#2A9D8F) geometric holographic elements float in the foreground, representing advanced AI diagnostics interacting seamlessly with human healthcare." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu2W5DEdlsAjV-Kjj5a0M3PKGGFh-C2Js8i3bj9CVlycm_evogg4GciETuLVAmLidhJEySNSn95SkhgyWKHZlk7VH1u_AW-DvTBMRLm4V_K73VZMD2wyiwxgvZdZ2jQv3GvhALTc0mPgDtFIabmlMemhQ8z65whBf8L8aBKSmWhUUOcfgyTDXhXLpo0ZCK0nI_TzwEltacXWzMsoz8tNVa5LuMMBmEKUkPl-pjDlbeY6h72aXNLz46XBYmvv4wkFknQQjyhpUuE-w"/>
+<!-- Floating Glass Card -->
+<div class="absolute bottom-8 left-8 right-8 glass-card rounded-2xl p-6 flex items-center gap-4">
+<div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">smart_toy</span>
+</div>
+<div>
+<p class="font-headline-sm text-headline-sm text-on-background mb-1">AI Diagnostic Engine</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Processing symptoms in real-time with empathetic care protocols.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Decorative Background Blob -->
+<div class="absolute top-0 right-0 -z-10 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[100px] translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
+</section>
+<!-- Services Grid -->
+<section class="py-section-padding-mobile md:py-section-padding-desktop px-gutter bg-surface-container-low" id="services">
+<div class="max-w-container-max mx-auto">
+<div class="text-center max-w-2xl mx-auto mb-stack-lg">
+<span class="font-label-caps text-label-caps text-primary tracking-widest uppercase mb-4 block">Specialties</span>
+<h2 class="font-headline-md text-headline-md text-on-background mb-4">Expert AI Healthcare Services</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Our advanced neural networks are trained on millions of medical records to provide accurate preliminary diagnostics across specialized fields.</p>
+</div>
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Service Card 1 -->
+<div class="bg-surface-container-lowest rounded-2xl p-8 soft-shadow border border-transparent hover:border-primary/30 transition-all duration-300 group cursor-pointer">
+<div class="w-14 h-14 rounded-xl bg-secondary-container flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">cardiology</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-background mb-3">Cardiology</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">AI-driven analysis of heart rhythms, blood pressure trends, and cardiovascular risk factors.</p>
+</div>
+<!-- Service Card 2 -->
+<div class="bg-surface-container-lowest rounded-2xl p-8 soft-shadow border border-transparent hover:border-primary/30 transition-all duration-300 group cursor-pointer">
+<div class="w-14 h-14 rounded-xl bg-secondary-container flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">neurology</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-background mb-3">Neurology</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Cognitive assessment patterns and neurological symptom correlation mapping.</p>
+</div>
+<!-- Service Card 3 -->
+<div class="bg-surface-container-lowest rounded-2xl p-8 soft-shadow border border-transparent hover:border-primary/30 transition-all duration-300 group cursor-pointer">
+<div class="w-14 h-14 rounded-xl bg-secondary-container flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">blood_pressure</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-background mb-3">Diabetes Care</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Predictive modeling for glucose fluctuations and personalized dietary recommendations.</p>
+</div>
+<!-- Service Card 4 -->
+<div class="bg-surface-container-lowest rounded-2xl p-8 soft-shadow border border-transparent hover:border-primary/30 transition-all duration-300 group cursor-pointer">
+<div class="w-14 h-14 rounded-xl bg-secondary-container flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pulmonology</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-background mb-3">Respiratory</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Audio-analysis for cough patterns and continuous monitoring of respiratory metrics.</p>
+</div>
+<!-- Service Card 5 -->
+<div class="bg-surface-container-lowest rounded-2xl p-8 soft-shadow border border-transparent hover:border-primary/30 transition-all duration-300 group cursor-pointer">
+<div class="w-14 h-14 rounded-xl bg-secondary-container flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dermatology</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-background mb-3">Dermatology</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Image-based analysis of skin lesions, rashes, and comprehensive dermatological tracking.</p>
+</div>
+<!-- Service Card 6 -->
+<div class="bg-surface-container-lowest rounded-2xl p-8 soft-shadow border border-transparent hover:border-primary/30 transition-all duration-300 group cursor-pointer">
+<div class="w-14 h-14 rounded-xl bg-secondary-container flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">orthopedics</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-background mb-3">Orthopedics</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Movement analysis and joint pain symptom mapping for structural health.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Chatbot FAB -->
+<button class="fixed bottom-8 right-8 w-16 h-16 bg-primary text-on-primary rounded-full shadow-lg hover:shadow-xl hover:bg-primary-container hover:text-on-primary-container transition-all duration-300 flex items-center justify-center z-50">
+<span class="material-symbols-outlined text-3xl">chat</span>
+</button>
+<!-- Footer -->
+<footer class="bg-on-tertiary-fixed dark:bg-on-tertiary-fixed w-full border-t border-on-tertiary-fixed-variant">
+<div class="max-w-[1280px] mx-auto px-gutter pt-section-padding-mobile pb-8 md:pt-section-padding-desktop">
+<div class="grid md:grid-cols-2 gap-stack-lg mb-12">
+<div>
+<a class="font-headline-sm text-headline-sm font-bold text-surface-lowest mb-6 inline-block" href="#">
+                        Healtho âš•ï¸
+                    </a>
+<p class="text-secondary-fixed-dim font-body-md text-body-md max-w-sm">
+                        Advancing global healthcare through empathetic, precise, and accessible artificial intelligence diagnostics.
+                    </p>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div>
+<h4 class="text-surface-lowest font-headline-sm text-headline-sm mb-4">Platform</h4>
+<ul class="flex flex-col gap-3 font-body-md text-body-md">
+<li><a class="text-secondary-fixed-dim hover:text-primary-fixed transition-colors duration-200" href="#">Features</a></li>
+<li><a class="text-secondary-fixed-dim hover:text-primary-fixed transition-colors duration-200" href="#">Services</a></li>
+<li><a class="text-secondary-fixed-dim hover:text-primary-fixed transition-colors duration-200" href="#">About</a></li>
+<li><a class="text-secondary-fixed-dim hover:text-primary-fixed transition-colors duration-200" href="#">FAQ</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-surface-lowest font-headline-sm text-headline-sm mb-4">Legal</h4>
+<ul class="flex flex-col gap-3 font-body-md text-body-md">
+<li><a class="text-secondary-fixed-dim hover:text-primary-fixed transition-colors duration-200" href="#">Privacy Policy</a></li>
+<li><a class="text-secondary-fixed-dim hover:text-primary-fixed transition-colors duration-200" href="#">Terms of Service</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="pt-8 border-t border-on-tertiary-fixed-variant text-center md:text-left text-secondary-fixed-dim font-body-md text-body-md flex flex-col md:flex-row justify-between items-center gap-4">
+<p>Â© 2024 Healtho. All rights reserved.</p>
+<p class="text-sm max-w-2xl text-center md:text-right">Disclaimer: The information provided is for educational purposes only and does not constitute medical advice.</p>
+</div>
+</div>
+</footer>
+</body></html>
