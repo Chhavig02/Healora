@@ -2,11 +2,11 @@
 
 <!-- Healtho Screenshot Placeholder -->
 
-## 👋 What is Healtho?
+## 👋 What is Healora?
 
-**Healtho** is your smart, virtual health assistant that’s available anytime, anywhere. Whether you have a question about your symptoms, need a medication reminder, or want health tips — Healtho is here to help.
+**Healora** is your smart, virtual health assistant that’s available anytime, anywhere. Whether you have a question about your symptoms, need a medication reminder, or want health tips — Healora is here to help.
 
-Powered by **AI (Artificial Intelligence)**, Healtho gives you fast, accurate, and personalized health information.
+Powered by **AI (Artificial Intelligence)**, Healora gives you fast, accurate, and personalized health information.
 
 ---
 
