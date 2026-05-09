@@ -1,4 +1,4 @@
-# 🩺 Healtho – Your AI Healthcare Chatbot
+# 🩺 Healora – Your AI Healthcare Chatbot
 
 <!-- Healtho Screenshot Placeholder -->
 

@@ -46,8 +46,9 @@ export default function App() {
     let ua = [...answers];
     if (val !== undefined && currentStep?.raw_symptom) ua.push([currentStep.raw_symptom, val]);
     setAnswers(ua);
+    const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     try {
-      const r = await fetch('http://localhost:5000/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, answers: ua }) });
+      const r = await fetch(`${BACKEND_URL}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, answers: ua }) });
       const d = await r.json();
       if (d.answers) setAnswers(d.answers);
       if (d.message) setMessages(p => [...p, { sender: 'bot', text: d.message }]);
