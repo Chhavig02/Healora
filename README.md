@@ -10,7 +10,7 @@ Powered by **AI (Artificial Intelligence)**, Healora gives you fast, accurate, a
 
 ---
 
-## 🌟 What Can Healtho Do?
+## 🌟 What Can Healora Do?
 
 * 🕐 **24/7 Support** – Ask health-related questions anytime.
 * 💬 **Symptom Checker** – Describe how you’re feeling, and Healtho will suggest possible causes and next steps.
