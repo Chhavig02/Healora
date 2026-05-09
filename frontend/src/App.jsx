@@ -9,6 +9,7 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState(null);
   const [loading, setLoading] = useState(false);
   const [faqOpen, setFaqOpen] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const bottomRef = useRef(null);
   const scrollerRef = useRef(null);
 
@@ -77,16 +78,23 @@ export default function App() {
           <div className="logo-area">
             <a className="logo-link" href="#" style={{color: 'var(--blue)'}}>Healora</a>
           </div>
-          <nav className="main-nav">
-            <a href="#services">Home</a>
-            <a href="#about">About</a>
-            <a href="#testimonials">Shop</a>
-            <a href="#faq">Blog</a>
+          
+          <div className={`nav-overlay ${mobileMenuOpen ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}></div>
+          <nav className={`main-nav ${mobileMenuOpen ? 'active' : ''}`}>
+            <a href="#services" onClick={() => setMobileMenuOpen(false)}>Home</a>
+            <a href="#about" onClick={() => setMobileMenuOpen(false)}>About</a>
+            <a href="#testimonials" onClick={() => setMobileMenuOpen(false)}>Shop</a>
+            <a href="#faq" onClick={() => setMobileMenuOpen(false)}>Blog</a>
             <div className="nav-dropdown">Pages ▾</div>
+            <button className="btn-pill mobile-cta" onClick={() => { setChatOpen(true); setMobileMenuOpen(false); }}>Get Started</button>
           </nav>
+
           <div className="hdr-actions">
             <div className="cart-icon">🛒<span className="cart-count">0</span></div>
-            <button className="btn-pill" onClick={() => setChatOpen(true)} style={{background: 'var(--blue)'}}>Get Started</button>
+            <button className="btn-pill desktop-cta" onClick={() => setChatOpen(true)} style={{background: 'var(--blue)'}}>Get Started</button>
+            <button className="menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              {mobileMenuOpen ? '✕' : '☰'}
+            </button>
           </div>
         </div>
       </header>
