@@ -4,6 +4,8 @@ dist-ssr
 __pycache__
 *.pyc
 .env
+*.db
+instance/
 .venv
 env/
 venv/

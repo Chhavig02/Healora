@@ -1,6 +1,8 @@
 flask
 flask-cors
-pandas
-numpy
-scikit-learn
+flask-sqlalchemy
 gunicorn
+pyjwt
+python-dotenv
+google-genai
+psycopg2-binary
