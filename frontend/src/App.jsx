@@ -1,3 +1,4 @@
+import { AlertTriangle, MessageCircle, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import ChatWidget from './components/ChatWidget';
@@ -58,7 +59,7 @@ export default function App() {
               </>
             )}
             <button className="menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle menu">
-              {mobileMenuOpen ? '✕' : '☰'}
+              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
@@ -103,12 +104,19 @@ export default function App() {
         </div>
         <div className="footer-bottom">
           <span>© 2026 Healora. All rights reserved.</span>
-          <span>⚠️ For informational purposes only. Not a substitute for medical advice.</span>
+          <span>
+            <AlertTriangle size={13} className="inline-icon" /> For informational purposes only. Not a substitute for
+            medical advice.
+          </span>
         </div>
       </footer>
 
       {/* CHAT FAB */}
-      {!chatOpen && <button className="chat-fab" onClick={openChat} aria-label="Open symptom chat">💬</button>}
+      {!chatOpen && (
+        <button className="chat-fab" onClick={openChat} aria-label="Open symptom chat">
+          <MessageCircle size={26} color="white" />
+        </button>
+      )}
 
       <ChatWidget open={chatOpen} onClose={() => setChatOpen(false)} />
     </>

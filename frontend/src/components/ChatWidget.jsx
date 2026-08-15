@@ -1,3 +1,4 @@
+import { AlertTriangle, CheckCircle, HeartPulse, Loader2, MessageCircle, Send, X, XCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import { api } from '../lib/api';
@@ -76,7 +77,15 @@ export default function ChatWidget({ open, onClose }) {
       console.error('Chatbot Error:', err);
       setMessages((p) => [
         ...p,
-        { sender: 'bot', text: '⚠️ Connection failed. Please ensure your backend is deployed and its URL is added to the VITE_API_URL environment variable.' },
+        {
+          sender: 'bot',
+          text: (
+            <>
+              <AlertTriangle size={14} className="inline-icon" /> Connection failed. Please ensure your backend is
+              deployed and its URL is added to the VITE_API_URL environment variable.
+            </>
+          ),
+        },
       ]);
     }
     setLoading(false);
@@ -91,7 +100,9 @@ export default function ChatWidget({ open, onClose }) {
           <div className="chat-modal" role="dialog" aria-modal="true" aria-label="Healora symptom chat">
             <div className="chat-modal-header">
               <div className="chat-header-info">
-                <div className="ai-avatar-circle">🤖</div>
+                <div className="ai-avatar-circle">
+                <HeartPulse size={20} />
+              </div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--dark)', letterSpacing: '-0.5px' }}>Healora AI</div>
                   <div className="status-indicator">
@@ -100,12 +111,16 @@ export default function ChatWidget({ open, onClose }) {
                   </div>
                 </div>
               </div>
-              <button className="chat-close" onClick={onClose} aria-label="Close chat">✕</button>
+              <button className="chat-close" onClick={onClose} aria-label="Close chat">
+                <X size={16} />
+              </button>
             </div>
             <div className="chat-messages">
               {showQuickPrompts ? (
                 <div className="chat-empty-state">
-                  <div className="chat-empty-icon" aria-hidden="true">💬</div>
+                  <div className="chat-empty-icon" aria-hidden="true">
+                    <MessageCircle size={40} />
+                  </div>
                   <h4>What can I help you understand?</h4>
                   <p>Describe your symptoms in your own words, or start with one of these:</p>
                   <div className="quick-prompts">
@@ -122,15 +137,19 @@ export default function ChatWidget({ open, onClose }) {
                     {m.type === 'result' ? (
                       <ConditionCard data={m.data} />
                     ) : m.type === 'emergency' ? (
-                      <Alert tone="danger" icon="⚠️">{m.text}</Alert>
+                      <Alert tone="danger" icon={<AlertTriangle size={18} />}>{m.text}</Alert>
                     ) : (
                       <MessageBubble
                         sender={m.sender}
                         actions={
                           m.opts && (
                             <div className="opts-row">
-                              <button className="opt-btn" onClick={() => send(null, true)}>✅ Yes</button>
-                              <button className="opt-btn" onClick={() => send(null, false)}>❌ No</button>
+                              <button className="opt-btn" onClick={() => send(null, true)}>
+                                <CheckCircle size={14} /> Yes
+                              </button>
+                              <button className="opt-btn" onClick={() => send(null, false)}>
+                                <XCircle size={14} /> No
+                              </button>
                             </div>
                           )
                         }
@@ -161,7 +180,9 @@ export default function ChatWidget({ open, onClose }) {
                 disabled={loading}
                 aria-label="Describe your symptoms"
               />
-              <button type="submit" disabled={loading} aria-label="Send message">{loading ? '…' : '→'}</button>
+              <button type="submit" disabled={loading} aria-label="Send message">
+                {loading ? <Loader2 size={18} className="spin" /> : <Send size={18} />}
+              </button>
             </form>
           </div>
         </div>

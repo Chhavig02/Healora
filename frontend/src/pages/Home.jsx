@@ -1,3 +1,4 @@
+import { AlertTriangle, ArrowRight, Bell, HeartPulse, Lightbulb, MessageCircle, Minus, Plus, Stethoscope } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -57,12 +58,14 @@ export default function Home({ onOpenChat }) {
             </p>
             {tip && (
               <div className="daily-tip">
-                <span className="daily-tip-label">💡 Tip of the day</span>
+                <span className="daily-tip-label"><Lightbulb size={14} /> Tip of the day</span>
                 <p>{tip}</p>
               </div>
             )}
             <div className="hero-btns">
-              <Button size="lg" onClick={onOpenChat}>Start a symptom check →</Button>
+              <Button size="lg" onClick={onOpenChat}>
+                Start a symptom check <ArrowRight size={18} className="inline-icon inline-icon-end" />
+              </Button>
               <Button variant="outline" size="lg" as="a" href="#how-it-works">How it works</Button>
             </div>
             <div className="hero-stat-row">
@@ -85,7 +88,9 @@ export default function Home({ onOpenChat }) {
           <div className="hero-preview" aria-hidden="true">
             <div className="hero-preview-window">
               <div className="hero-preview-header">
-                <div className="hero-preview-avatar">🤖</div>
+                <div className="hero-preview-avatar">
+                  <HeartPulse size={18} color="white" />
+                </div>
                 <div>
                   <strong>Healora AI</strong>
                   <span>How are you feeling?</span>
@@ -157,22 +162,22 @@ export default function Home({ onOpenChat }) {
           <SectionHeading tag="What Healora Offers" title="Everything you need to understand your symptoms" />
           <div className="feature-grid">
             <FeatureCard
-              icon="💬"
+              icon={<MessageCircle size={24} />}
               title="Symptom Support"
               description="Describe symptoms naturally and explore possible conditions grounded in real medical data."
             />
             <FeatureCard
-              icon="🩺"
+              icon={<Stethoscope size={24} />}
               title="Health Assistant"
               description="Get clear, conversational explanations of your results — not just a list of terms."
             />
             <FeatureCard
-              icon="⚠️"
+              icon={<AlertTriangle size={24} />}
               title="Safety Alerts"
               description="Healora flags situations that may need urgent professional care, independent of the AI."
             />
             <FeatureCard
-              icon="⏰"
+              icon={<Bell size={24} />}
               title="Medication Reminders"
               description="Create an account to keep track of your personal medication schedule."
             />
@@ -194,7 +199,9 @@ export default function Home({ onOpenChat }) {
                   onClick={() => setFaqOpen(faqOpen === i ? null : i)}
                 >
                   <span>{f.q}</span>
-                  <span className="faq-icon" aria-hidden="true">{faqOpen === i ? '−' : '+'}</span>
+                  <span className="faq-icon" aria-hidden="true">
+                    {faqOpen === i ? <Minus size={18} /> : <Plus size={18} />}
+                  </span>
                 </button>
                 {faqOpen === i && <p className="faq-a">{f.a}</p>}
               </div>
@@ -208,7 +215,9 @@ export default function Home({ onOpenChat }) {
         <div className="section-container cta-inner">
           <h2>Ready to understand your symptoms?</h2>
           <p>Free to try, grounded in a real medical knowledge base — no account required to get started.</p>
-          <Button variant="white" size="lg" onClick={onOpenChat}>Start a symptom check →</Button>
+          <Button variant="white" size="lg" onClick={onOpenChat}>
+            Start a symptom check <ArrowRight size={18} className="inline-icon inline-icon-end" />
+          </Button>
         </div>
       </section>
     </>

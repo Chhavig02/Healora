@@ -1,3 +1,4 @@
+import { Check, X } from 'lucide-react';
 import Badge from './Badge';
 
 const MATCH_LABELS = { strong: 'Strong match', moderate: 'Moderate match', possible: 'Possible match' };
@@ -38,7 +39,7 @@ export default function ConditionCard({ data }) {
         <ul className="condition-symptom-list">
           {matchedSymptoms.map((s, i) => (
             <li key={i}>
-              <span className="condition-symptom-check" aria-hidden="true">✓</span>
+              <Check size={14} className="condition-symptom-check" aria-hidden="true" />
               {s}
             </li>
           ))}
@@ -49,7 +50,7 @@ export default function ConditionCard({ data }) {
         <ul className="condition-symptom-list">
           {deniedSymptoms.map((s, i) => (
             <li key={i}>
-              <span className="condition-symptom-check" aria-hidden="true" style={{ color: 'var(--gray-light)' }}>✕</span>
+              <X size={14} className="condition-symptom-check" style={{ color: 'var(--gray-light)' }} aria-hidden="true" />
               {s}
             </li>
           ))}

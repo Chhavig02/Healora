@@ -1,3 +1,4 @@
+import { Bell, MessageCircle, Pill, Plus, Stethoscope } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -128,14 +129,18 @@ export default function Dashboard({ onOpenChat }) {
         {/* QUICK ACTIONS */}
         <div className="quick-actions-grid">
           <button className="quick-action-card" onClick={onOpenChat}>
-            <div className="quick-action-icon">💬</div>
+            <div className="quick-action-icon">
+              <MessageCircle size={22} />
+            </div>
             <div>
               <h3>Symptom Check</h3>
               <p>Describe what you're experiencing.</p>
             </div>
           </button>
           <a className="quick-action-card" href="#reminders">
-            <div className="quick-action-icon">⏰</div>
+            <div className="quick-action-icon">
+              <Bell size={22} />
+            </div>
             <div>
               <h3>Medication Reminders</h3>
               <p>View today's reminders.</p>
@@ -148,7 +153,7 @@ export default function Dashboard({ onOpenChat }) {
           <h2 className="dashboard-block-title">Recent activity</h2>
           <div className="ui-card">
             <EmptyState
-              icon="🩺"
+              icon={<Stethoscope size={36} />}
               title="No recent activity yet"
               description="Start a symptom check to see your health guidance history here."
               action={<Button onClick={onOpenChat}>Start a symptom check</Button>}
@@ -161,7 +166,9 @@ export default function Dashboard({ onOpenChat }) {
           <div className="dashboard-block-hdr">
             <h2 className="dashboard-block-title">Today's reminders</h2>
             {!showForm && (
-              <Button size="sm" onClick={() => setShowForm(true)}>+ Add reminder</Button>
+              <Button size="sm" onClick={() => setShowForm(true)}>
+                <Plus size={16} className="inline-icon" /> Add reminder
+              </Button>
             )}
           </div>
 
@@ -212,10 +219,14 @@ export default function Dashboard({ onOpenChat }) {
             !showForm && (
               <div className="ui-card">
                 <EmptyState
-                  icon="💊"
+                  icon={<Pill size={36} />}
                   title="No reminders yet"
                   description="Add your first medication to get started."
-                  action={<Button onClick={() => setShowForm(true)}>+ Add reminder</Button>}
+                  action={
+                    <Button onClick={() => setShowForm(true)}>
+                      <Plus size={16} className="inline-icon" /> Add reminder
+                    </Button>
+                  }
                 />
               </div>
             )

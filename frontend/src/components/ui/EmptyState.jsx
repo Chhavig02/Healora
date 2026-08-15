@@ -1,4 +1,6 @@
-export default function EmptyState({ icon = '📋', title, description, action }) {
+import { ClipboardList } from 'lucide-react';
+
+export default function EmptyState({ icon = <ClipboardList size={36} />, title, description, action }) {
   return (
     <div className="empty-state">
       <div className="empty-state-icon" aria-hidden="true">{icon}</div>

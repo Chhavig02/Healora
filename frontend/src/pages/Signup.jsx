@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -32,9 +33,9 @@ export default function Signup() {
         <Link to="/" className="auth-split-logo">Healora</Link>
         <h1>Understand your health, one symptom at a time.</h1>
         <ul className="auth-split-benefits">
-          <li><span aria-hidden="true">✓</span> AI-assisted symptom guidance</li>
-          <li><span aria-hidden="true">✓</span> Private history tied to your account</li>
-          <li><span aria-hidden="true">✓</span> Medication reminders</li>
+          <li><span aria-hidden="true"><Check size={13} /></span> AI-assisted symptom guidance</li>
+          <li><span aria-hidden="true"><Check size={13} /></span> Private history tied to your account</li>
+          <li><span aria-hidden="true"><Check size={13} /></span> Medication reminders</li>
         </ul>
       </div>
 
