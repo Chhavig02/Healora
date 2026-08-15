@@ -31,7 +31,6 @@ _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
 
-from app import create_app  # noqa: E402
 from data.legacy_disease_info import DISEASE_INFO  # noqa: E402
 from data.symptom_aliases_seed import SYMPTOM_ALIASES_SEED  # noqa: E402
 from extensions import db  # noqa: E402
@@ -315,6 +314,11 @@ def import_diseases_from_json(path, verbose=True):
 
 
 def run(json_path=None, skip_csv=False, verbose=True):
+    # Local import: app.py imports migrate_legacy_csv from this module for
+    # startup auto-seeding, so importing create_app back at module level
+    # here would be circular.
+    from app import create_app
+
     app = create_app()
     with app.app_context():
         if not skip_csv:

@@ -15,8 +15,10 @@ from chat import chat_bp
 from config import Config
 from diseases import diseases_bp
 from extensions import db
+from models import Symptom
 from reminders import reminders_bp
 from schema_sync import sync_schema
+from scripts.seed_diseases import migrate_legacy_csv
 
 
 def create_app():
@@ -30,6 +32,14 @@ def create_app():
     with flask_app.app_context():
         db.create_all()
         sync_schema(db)
+        # A freshly created database (first boot against a new DATABASE_URL,
+        # e.g. a new deploy) has no Disease/Symptom rows yet, and nothing
+        # else runs the seed step automatically — every symptom check would
+        # silently fail to match anything. migrate_legacy_csv is idempotent
+        # (matches by unique name), so this is safe to check on every boot.
+        if Symptom.query.count() == 0:
+            flask_app.logger.info("Empty symptom table detected — running legacy CSV seed migration.")
+            migrate_legacy_csv(verbose=False)
 
     flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(reminders_bp)
