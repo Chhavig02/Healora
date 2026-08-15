@@ -1,50 +1,157 @@
-# 🩺 Healora – AI-Assisted Symptom Support
+<div align="center">
 
-## 👋 What is Healora?
+# Healora
 
-**Healora** is an educational symptom-support assistant, not a diagnostic
-tool. It helps you think through what you're feeling, points you toward
-possible conditions worth discussing with a doctor, and lets you keep
-medication reminders tied to your account.
+**AI-assisted symptom support for clearer, safer health guidance.**
 
-**Healora does not diagnose disease.** Every result is framed as "possible
-conditions to discuss with a doctor," never a definitive answer. Always
-consult a licensed healthcare professional, especially for anything severe,
-persistent, or worsening.
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](frontend/package.json)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](frontend/package.json)
+[![Flask](https://img.shields.io/badge/Flask-black?logo=flask&logoColor=white)](backend/requirements.txt)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](backend/requirements.txt)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-D71F00?logo=sqlalchemy&logoColor=white)](backend/models.py)
+[![Gemini](https://img.shields.io/badge/Gemini-language%20layer-8E75B2?logo=googlegemini&logoColor=white)](backend/gemini_client.py)
+[![JWT Auth](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens&logoColor=white)](backend/auth.py)
+[![License: MIT](https://img.shields.io/badge/License-MIT-4CAF50)](LICENSE)
+
+[**Live Demo**](https://healora-six.vercel.app) · [**Backend API**](https://healora-l3nl.onrender.com) · [**Repository**](https://github.com/Chhavig02/Healora)
+
+</div>
+
+<br />
+
+<div align="center">
+  <img src="docs/images/home.png" alt="Healora landing page" width="90%" />
+</div>
+
+<br />
+
+> ⚠️ **Healora is an educational symptom-support application and is not a medical diagnostic tool.** It never states a definitive diagnosis — every result is framed as a *possible condition to discuss with a doctor*. Always consult a licensed healthcare professional, especially for anything severe, persistent, or worsening.
 
 ---
 
-## 🌟 What Healora Does
+## Table of contents
 
-* 💬 **Symptom-support chat** – Describe how you're feeling in your own
-  words; Healora extracts known symptoms, ranks candidate conditions from
-  its database, and asks a targeted follow-up question when it needs more
-  information to narrow things down.
-* 🧠 **Hybrid AI** – A deterministic, database-backed engine does the actual
-  symptom matching and ranking (free, always available, no external calls).
-  Gemini is layered on top purely as the language/NLP layer: turning free
-  text into known symptom names, phrasing follow-up questions naturally, and
-  writing an explanation grounded in the facts the database already
-  determined. Gemini never decides what disease is being discussed and never
-  invents medical facts — see [The Gemini boundary](#-the-gemini-boundary).
-* 🗄️ **Scalable disease knowledge base** – Diseases and symptoms are rows in
-  a database (`Disease`, `Symptom`, `DiseaseSymptom`), not a hardcoded Python
-  dict or a model retrained from a CSV on every boot. Growing from dozens of
-  conditions to hundreds means adding data, not editing code — see
-  [Scaling the knowledge base](#-scaling-the-knowledge-base).
-* 🚨 **Independent emergency safety layer** – A hardcoded keyword check
-  (chest pain, can't breathe, suicidal ideation, uncontrolled bleeding, etc.)
-  runs *before* any database lookup or Gemini call and is final. Nothing
-  downstream — including Gemini — can see or override it.
-* ⏰ **Medication reminders** – Create an account and Healora stores your
-  reminders (medication, dosage, time, frequency, notes).
-* 🔐 **Accounts** – Email/password signup and login (JWT-based), so
-  reminders and chat history are yours alone.
-* 🧾 **Personalized context** – Logged-in users' recent chat history is fed
-  back into result explanations so they can reference what you've told
-  Healora before, without changing what the underlying match actually is.
-* 💡 **Daily tip** – A rotating wellness tip (AI-generated when Gemini is
-  configured, otherwise a curated static list).
+- [What is Healora?](#what-is-healora)
+- [Product preview](#-product-preview)
+- [Key features](#-key-features)
+- [How it works](#-how-it-works)
+- [Architecture](#-architecture)
+- [The Gemini boundary](#-the-gemini-boundary)
+- [Emergency safety layer](#-emergency-safety-layer)
+- [Scaling the knowledge base](#-scaling-the-knowledge-base)
+- [Medical data quality](#-medical-data-quality)
+- [Getting started](#-getting-started)
+- [Testing](#-testing)
+- [API reference](#-api-reference)
+- [Deployment](#-deployment)
+- [Limitations](#-limitations)
+- [License](#-license)
+
+---
+
+## What is Healora?
+
+Healora is a full-stack health-tech application that helps people put words to what they're feeling and understand what it might mean — without pretending to be a doctor.
+
+A user describes their symptoms **in plain, natural language** ("I have a fever and headache"). Healora:
+
+1. Normalizes that free text into known, canonical symptom names — using a fast local matcher first, with Gemini as an optional NLP layer for phrasing that the local matcher can't resolve on its own.
+2. Matches the resulting symptom set against a **structured, relational disease/symptom knowledge base** (not a hardcoded list), ranking candidate conditions by weighted symptom overlap.
+3. Asks a targeted follow-up question when the signal isn't strong enough yet, or presents ranked **possible conditions** — each with a qualitative match strength, never a fabricated percentage.
+4. Runs every message through an **independent emergency-safety check** first, before any database lookup or model call, so a phrase like "chest pain" or "can't breathe" is never held up waiting on an AI response.
+5. Wraps every explanation in **educational framing**, grounded only in facts the database actually contains — Gemini writes the prose, but never decides the medical facts.
+
+Everything above is real, running code — described in detail (with file references) further down this document.
+
+---
+
+## 🖥️ Product Preview
+
+### Landing page
+
+![Healora home page](docs/images/home.png)
+
+### AI symptom assistant
+
+Natural-language input, quick-start prompts, and a conversational follow-up flow.
+
+![Healora chat widget](docs/images/chat.png)
+
+### Possible conditions
+
+Ranked results with match strength, matched symptoms, and other possibilities — always paired with an educational, non-diagnostic disclaimer.
+
+![Healora possible conditions result](docs/images/results.png)
+
+### Emergency safety layer
+
+A hardcoded, Gemini-independent check intercepts emergency phrasing before anything else runs.
+
+![Healora emergency safety alert](docs/images/emergency.png)
+
+### Authentication
+
+![Healora signup page](docs/images/auth.png)
+
+### Dashboard & medication reminders
+
+![Healora dashboard](docs/images/dashboard.png)
+
+![Healora medication reminders](docs/images/reminders.png)
+
+### Responsive / mobile
+
+![Healora on mobile](docs/images/mobile.png)
+
+*All screenshots above are real captures of the live deployment — no mockups or stock imagery.*
+
+---
+
+## ✨ Key Features
+
+- 💬 **Natural-language symptom input** — describe how you feel in your own words, no medical jargon required.
+- 🧠 **Local symptom extraction** — a deterministic, three-pass matcher (`symptom_engine.py`) resolves free text to canonical symptom names using exact phrase, multi-word, and fuzzy-typo matching. Always available, zero external calls, zero cost.
+- 🔤 **Symptom normalization & aliases** — conversational phrasings ("my joints hurt", "can't breathe properly") map to canonical symptom names via a curated `SymptomAlias` table.
+- 🗄️ **Structured disease/symptom knowledge base** — `Disease`, `Symptom`, and `DiseaseSymptom` are database rows with weighted, many-to-many links, not a hardcoded Python dict.
+- 📊 **Weighted disease matching & ranking** — `disease_matcher.py` scores every candidate disease by matched vs. contradicted symptom weight; nothing in this module is disease-specific.
+- ✅ **Possible-condition results** — ranked, qualitative match strength ("possible" / "moderate" / "strong"), never a numeric confidence score.
+- 🚨 **Independent emergency detection** — a fixed keyword check runs before any database query or Gemini call, and its decision is final.
+- 🤖 **Gemini NLP layer** — used for symptom-name extraction, natural follow-up question phrasing, and grounded result explanations. Never the source of medical truth — see [The Gemini boundary](#-the-gemini-boundary).
+- 🔁 **Graceful Gemini fallback** — every Gemini call degrades to a deterministic local fallback if no API key is configured, the call fails, or the response fails shape validation. The app is fully functional with zero AI calls.
+- 🌱 **Automatic knowledge-base initialization** — on a fresh database, the app seeds itself from the bundled dataset on first boot; no manual migration step required to get a working instance.
+- 🔐 **Authentication** — JWT-based email/password signup and login.
+- 📋 **User dashboard** — quick actions, recent-activity surface, and reminders in one place.
+- ⏰ **Medication reminders** — create, edit, pause, and delete reminders (medication, dosage, time, frequency, notes), scoped to your account.
+- 🧾 **Personalized context** — a logged-in user's recent chat history is fed back into result explanations.
+- 💡 **Daily wellness tip** — AI-generated when Gemini is configured, otherwise a curated static list.
+- 📱 **Responsive frontend** — a React 19 + Vite single-page app that works from mobile to desktop.
+
+---
+
+## 🔍 How It Works
+
+```mermaid
+flowchart TD
+    A[User describes symptoms] --> B{Emergency safety check}
+    B -->|Emergency phrase detected| C[Fixed emergency guidance<br/>final — nothing downstream can override it]
+    B -->|Normal| D[Local symptom extraction<br/>symptom_engine.py]
+    B -->|Normal| E[Gemini NLP extraction<br/>constrained to known vocabulary]
+    D --> F[Canonical symptom set<br/>unresolved terms discarded, valid ones kept]
+    E --> F
+    F --> G[disease_matcher.py<br/>weighted symptom-overlap ranking]
+    G --> H{Confident enough?}
+    H -->|Not yet| I[Targeted follow-up question]
+    I --> A
+    H -->|Yes| J[Ranked possible conditions]
+    J --> K[Gemini-phrased explanation<br/>grounded only in DB facts]
+```
+
+A few things worth calling out about this flow:
+
+- **Emergency detection always wins.** It runs first, needs no database or network call, and its result can't be seen or overridden by anything downstream — including Gemini.
+- **Extraction is two independent sources merged, not a pipeline.** Local keyword matching and Gemini's extraction both run against the *same* canonical vocabulary and their results are unioned — so if Gemini is down, rate-limited, or simply not configured, local matching alone still works.
+- **An unresolved symptom never poisons a valid one.** If a user says "I have cold and fever" and "cold" doesn't resolve to any canonical symptom, `fever` still reaches the matcher on its own — the invalid term is dropped, not the whole extraction.
+- **The matcher decides the medical result; Gemini decides the words.** Which condition is presented is fully determined by `disease_matcher.py` reading the database — Gemini is only called afterward, to phrase an explanation grounded in the facts that decision already produced.
 
 ---
 
@@ -52,135 +159,101 @@ persistent, or worsening.
 
 ```
 backend/
-├── app.py                 Flask app factory, blueprint registration
-├── config.py               Env-var-driven config
-├── models.py                User/Reminder/ChatMessage + Disease/Symptom/DiseaseSymptom
-├── auth.py, reminders.py, chat.py, diseases.py   Blueprints
-├── disease_matcher.py      Generic DB-driven ranking + follow-up questions
-├── symptom_engine.py       Free-text -> canonical symptom name matching
-├── emergency.py            Independent keyword-based emergency detection
-├── gemini_client.py        Gemini wrapper + the "Gemini boundary" contract
-├── health_tips.py
-├── data/                   Legacy dataset descriptions + curated symptom aliases
-├── scripts/seed_diseases.py  Idempotent CSV/JSON -> database importer
-└── tests/                  pytest suite
+├── app.py                    Flask app factory — blueprint registration + first-boot DB seeding
+├── config.py                 Env-var-driven configuration
+├── models.py                 User/Reminder/ChatMessage + Disease/Symptom/DiseaseSymptom
+├── auth.py, reminders.py,
+│   chat.py, diseases.py      Flask blueprints
+├── disease_matcher.py        Generic, DB-driven ranking + adaptive follow-up questions
+├── symptom_engine.py         Free-text → canonical symptom name matching
+├── emergency.py              Independent, keyword-based emergency detection
+├── gemini_client.py          Gemini wrapper + the "Gemini boundary" contract
+├── health_tips.py            Daily wellness tip (AI or curated fallback)
+├── schema_sync.py            Additive auto-migration (adds missing nullable columns)
+├── data/                     Legacy dataset descriptions + curated symptom aliases
+├── scripts/
+│   ├── seed_diseases.py      Idempotent CSV/JSON → database importer
+│   └── import_disease_expansion.py   Optional 150-disease dataset merge
+└── tests/                    73-test pytest suite
 
-frontend/   React + Vite SPA — marketing site, auth pages, dashboard, chat widget
+frontend/
+└── src/
+    ├── pages/                Home, Login, Signup, Dashboard
+    ├── components/
+    │   ├── ChatWidget.jsx    The symptom-check conversational UI
+    │   └── ui/               ConditionCard, MessageBubble, Alert, Badge, ...
+    ├── context/               Auth context (JWT persisted client-side)
+    └── lib/api.js             Thin fetch wrapper around the backend API
 ```
 
-### The disease knowledge base
+<details>
+<summary><strong>The disease knowledge base — schema details</strong></summary>
 
-Replaces the original hardcoded ~41-disease `DISEASE_INFO` dict and a
-`sklearn.DecisionTreeClassifier` retrained from a CSV on every server boot.
+<br />
 
-- **`Disease`** — name, description, category, `risk_score` (0-100, drives a
-  computed `severity_label`), plus optional enrichment fields (`causes`,
-  `risk_factors`, `prevention`, `when_to_see_doctor`,
-  `emergency_warning_signs`, `management`, `age_sex_notes`) and a `source`
-  attribution. Enrichment fields are `NULL` unless there's real data behind
-  them — never auto-filled with generated text (see
-  [Medical data quality](#-medical-data-quality)).
-- **`Symptom`** — canonical underscored name (the same identifier used in
-  the `answers` API contract), display name, optional category.
-- **`DiseaseSymptom`** — the many-to-many link, with `is_common` and a
-  continuous `weight` so a defining symptom counts for more than an
-  occasional one. Unique-constrained on `(disease_id, symptom_id)`.
-- **`SymptomAlias` / `DiseaseAlias`** — conversational phrasings mapped to a
-  canonical name (`"my joints hurt"` → `joint_pain`), and disease name
-  variants, respectively.
+Replaces an original hardcoded ~41-disease dict and a `sklearn.DecisionTreeClassifier` retrained from a CSV on every server boot.
 
-All four tables are indexed on their name columns and the foreign keys used
-for lookups, so ranking queries stay targeted (`WHERE symptom_id IN (...)`)
-instead of scanning every disease — see [Performance](#-performance) for
-why this matters as the dataset grows.
+- **`Disease`** — name, description, category, `risk_score` (0–100, drives a computed `severity_label`), plus optional enrichment fields (`causes`, `risk_factors`, `prevention`, `when_to_see_doctor`, `emergency_warning_signs`, `management`, `age_sex_notes`) and a `source` attribution. Enrichment fields are `NULL` unless there's real data behind them — never auto-filled with generated text (see [Medical data quality](#-medical-data-quality)).
+- **`Symptom`** — canonical underscored name (the same identifier used in the `answers` API contract), display name, optional category.
+- **`DiseaseSymptom`** — the many-to-many link, with `is_common` and a continuous `weight` so a defining symptom counts for more than an occasional one. Unique-constrained on `(disease_id, symptom_id)`.
+- **`SymptomAlias` / `DiseaseAlias`** — conversational phrasings mapped to a canonical name (`"my joints hurt"` → `joint_pain`), and disease name variants, respectively.
+
+All four tables are indexed on their name columns and the foreign keys used for lookups, so ranking queries stay targeted instead of scanning every disease.
 
 ### `disease_matcher.py` — generic ranking, no per-disease logic
 
-`rank_diseases(yes_symptoms, no_symptoms)` scores every disease sharing at
-least one confirmed symptom: `(matched_weight × 10) − (contradicted_weight
-× 6) − (total_weight × 0.15)`, ranked descending. `get_next_step(answers)`
-decides whether to ask another question or present a result:
-
-- **Result** once the top candidate clears a score threshold *and* has at
-  least 2 corroborating symptoms (not just one high-weight match — see the
-  regression note in the source), or the user has volunteered 4+ symptoms,
-  or a question budget (`MAX_QUESTIONS`) is exhausted.
-- **Question** otherwise: `pick_next_symptom` looks at the top 5 candidate
-  diseases' full symptom sets and picks the unanswered symptom present in
-  roughly half of them — the one whose answer actually changes the ranking,
-  not just any unasked symptom.
-
-Nothing in this file references a disease by name. Add a disease to the
-database and it participates in ranking and questioning automatically.
+`rank_diseases(yes_symptoms, no_symptoms)` scores every disease sharing at least one confirmed symptom: `(matched_weight × 10) − (contradicted_weight × 6) − (total_weight × 0.15)`, ranked descending. `get_next_step(answers)` decides whether to ask another question or present a result — a result requires the top candidate to clear a score threshold *and* have at least 2 corroborating symptoms (not just one high-weight match), or the user has volunteered 4+ symptoms, or a question budget is exhausted. Nothing in this file references a disease by name — add a disease to the database and it participates automatically.
 
 ### `symptom_engine.py` — free text → canonical symptom names
 
-Three passes, in order, all backed by the `Symptom`/`SymptomAlias` tables
-(no hardcoded vocabulary):
+Three passes, in order, all backed by the `Symptom`/`SymptomAlias` tables (no hardcoded vocabulary):
 
-1. **Exact phrase match** — canonical name, display name, or a known alias
-   appears verbatim (word-bounded) in the message.
-2. **All-significant-words match** — every non-stopword of a multi-word
-   symptom/alias appears somewhere in the message, in any order (so "pain
-   behind eyes" still matches "pain behind the eyes").
-3. **Fuzzy single-token match** (`difflib`, cutoff 0.84) — catches typos
-   like "haedache" — only attempted if the first two passes found nothing,
-   to keep false positives down.
+1. **Exact phrase match** — canonical name, display name, or a known alias appears verbatim (word-bounded) in the message.
+2. **All-significant-words match** — every non-stopword of a multi-word symptom/alias appears somewhere in the message, in any order.
+3. **Fuzzy single-token match** (`difflib`, cutoff 0.84) — catches typos like "haedache", only attempted if the first two passes found nothing.
 
-This is the always-available fallback; the vocabulary it's constrained to
-is queried from the database, not hardcoded, so it grows automatically as
-the dataset does.
+</details>
 
 ---
 
-## 🤖 The Gemini boundary
+## 🤖 The Gemini Boundary
 
-Gemini is the language layer only — it is never Healora's source of medical
-truth. This is enforced structurally, not just by prompt wording:
+Gemini is the language layer only — it is never Healora's source of medical truth. This is enforced structurally, not just by prompt wording:
 
 | Rule | How it's enforced |
 |---|---|
-| Gemini never creates/edits a Disease or Symptom row | Only `scripts/seed_diseases.py` writes to those tables; no code path lets a Gemini response reach `db.session.add()` |
-| Symptom names Gemini extracts are validated | `chat.py`'s `_gemini_extract_symptoms` filters every returned item against `symptom_engine.get_all_symptom_names()` (the real `Symptom` table); unresolved items are discarded and logged, never inserted |
+| Gemini never creates/edits a `Disease` or `Symptom` row | Only `scripts/seed_diseases.py` writes to those tables; no code path lets a Gemini response reach `db.session.add()` |
+| Symptom names Gemini extracts are validated | `chat.py`'s `_gemini_extract_symptoms` filters every returned item against the real `Symptom` table; unresolved items are discarded and logged, never inserted |
+| An unresolved symptom can't discard a valid one | Extraction is a per-item filter, not an all-or-nothing check — one bad term never drops the good ones alongside it |
 | Disease ranking is Gemini-free | `disease_matcher.py` only reads the database; which disease is presented is decided *before* Gemini is ever called |
 | Explanations are grounded, not generated from scratch | The result-explanation prompt includes the specific `Disease` row's fields and explicitly lists the only condition names Gemini is allowed to mention |
 | Emergency detection is fully independent | `emergency.py` has no Gemini dependency and runs before any database lookup or model call; its decision is final |
 | JSON responses are shape-validated | `gemini_client.generate_json` accepts a `validator` callable; a shape mismatch is treated exactly like an API failure |
-| The disease list is never dumped into a prompt | Only the top-5 already-ranked candidates (from the database) are ever named to Gemini per turn — bounded regardless of how large the dataset gets |
-| Token usage stays practical for the free tier | At most 2 Gemini calls per chat turn (extraction + phrasing), each capped at a 10s timeout (the server-enforced minimum — anything shorter is rejected outright) with no SDK-level retry — the app's own fallback is faster and just as safe as waiting on a retry loop |
+| Every Gemini call has a bounded fallback | No API key, a failed call, a timeout, or a bad response all resolve to the same deterministic local fallback — never an error shown to the user |
 
-This is enforced by code structure and prompt constraints, not a guarantee
-against every possible model deviation — see [Limitations](#-limitations).
+This is enforced by code structure and prompt constraints, not a guarantee against every possible model deviation — see [Limitations](#-limitations).
 
 ---
 
-## 🚨 Emergency safety layer
+## 🚨 Emergency Safety Layer
 
-`emergency.py` checks the raw message against a hardcoded phrase list
-(chest pain, can't breathe, loss of consciousness, stroke-like symptoms,
-suicidal ideation, uncontrolled bleeding, anaphylaxis, etc.) **before**
-anything else in the request — before symptom extraction, before any
-database query, before any Gemini call. If it matches, the response is a
-fixed, concise safety message telling the user to contact emergency
-services; nothing else in the pipeline runs, and nothing downstream can
-override that decision.
+`emergency.py` checks the raw message against a hardcoded phrase list (chest pain, can't breathe, loss of consciousness, stroke-like symptoms, suicidal ideation, uncontrolled bleeding, anaphylaxis, and more) **before** anything else in the request — before symptom extraction, before any database query, before any Gemini call. If it matches, the response is a fixed, concise safety message directing the user to emergency services; nothing else in the pipeline runs, and nothing downstream can override that decision.
 
 ---
 
-## 📊 Scaling the knowledge base
+## 📊 Scaling the Knowledge Base
 
-Going from the current dataset to 500 or 1000+ diseases requires **adding
-data, not changing code** — `disease_matcher.py` and `symptom_engine.py` are
-fully generic.
+<details>
+<summary><strong>Adding diseases without touching source code</strong></summary>
 
-### Adding diseases without touching source code
+<br />
+
+Going from the current dataset to hundreds more diseases requires **adding data, not changing code** — `disease_matcher.py` and `symptom_engine.py` are fully generic.
 
 ```bash
 cd backend
 python scripts/seed_diseases.py --json path/to/more_diseases.json
 ```
-
-JSON shape (see `DISEASE_JSON_SCHEMA` in `scripts/seed_diseases.py`):
 
 ```json
 [
@@ -191,133 +264,64 @@ JSON shape (see `DISEASE_JSON_SCHEMA` in `scripts/seed_diseases.py`):
     "risk_score": 65,
     "source": "https://www.who.int/news-room/fact-sheets/detail/dengue-and-severe-dengue",
     "symptoms": [
-      {"name": "high_fever", "is_common": true, "weight": 2.5},
-      {"name": "headache", "is_common": true, "weight": 2.0}
+      { "name": "high_fever", "is_common": true, "weight": 2.5 },
+      { "name": "headache", "is_common": true, "weight": 2.0 }
     ]
   }
 ]
 ```
 
-The importer is **idempotent** — diseases are matched by unique name,
-symptoms by unique name, links by a `(disease_id, symptom_id)` unique
-constraint. Re-running the same file updates existing rows rather than
-duplicating them, and malformed records (missing name, no symptoms) are
-skipped with a printed warning rather than crashing the import.
+The importer is **idempotent** — diseases and symptoms are matched by unique name, links by a `(disease_id, symptom_id)` unique constraint. Re-running the same file updates existing rows rather than duplicating them.
 
-### Re-running the original migration
+### The optional 150-disease expansion
+
+`scripts/import_disease_expansion.py` can merge a second, larger dataset — 150 additional diseases, 360 additional symptoms, 750 disease-symptom mappings, sourced from `backend/data/expansion/*.xlsx` — into the same tables:
 
 ```bash
-python scripts/seed_diseases.py            # migrates Training.csv/doc_consult.csv
-python scripts/seed_diseases.py --skip-csv --json more.json   # JSON only
+python scripts/import_disease_expansion.py
 ```
 
-### The 150-disease expansion
+Also idempotent, and specifically careful about not blindly merging similarly-named records — see `DISEASE_MERGE_MAP` / `SYMPTOM_MERGE_MAP` in that script for the hand-reviewed list of genuine duplicates versus medically-distinct look-alikes kept separate on purpose (e.g. `eye_pain` is not `knee_pain`).
 
-`scripts/import_disease_expansion.py` merges a second dataset — 150
-additional diseases, 360 additional symptoms, 750 disease-symptom
-mappings, sourced from `backend/data/expansion/*.xlsx` — into the same
-tables:
+This expansion is **not** run automatically — the live demo above runs on the base ~41-disease / 131-symptom dataset, seeded automatically on first boot (see [Deployment](#-deployment)).
 
-```bash
-python scripts/import_disease_expansion.py                 # uses backend/data/expansion/
-python scripts/import_disease_expansion.py --xlsx-dir path/to/files
-```
-
-Also idempotent, and specifically careful about not blindly merging
-similarly-named records — see the `DISEASE_MERGE_MAP` /
-`SYMPTOM_MERGE_MAP` comments at the top of that script for the exact,
-hand-reviewed list of genuine duplicates (case variants, one dataset typo,
-true symptom synonyms) versus look-alikes that were kept as distinct,
-separate records on purpose (e.g. "Gastritis" is not "Arthritis"; `eye_pain`
-is not `knee_pain`). The `importance` column in the source data
-(`high`/`medium`/`supporting`) is preserved verbatim in
-`DiseaseSymptom.importance_label` — it is a category from the source
-dataset, not a clinical probability, and is never presented as one.
+</details>
 
 ---
 
-## 🧪 Medical data quality
+## 🧪 Medical Data Quality
 
-The bundled migration ports the project's original ~41-disease dataset
-(`Training.csv`, `doc_consult.csv`, and its curated descriptions)
-faithfully — nothing was invented to pad it out, and nothing was dropped:
+<details>
+<summary><strong>Data provenance, quality notes, and known dirty-data findings</strong></summary>
 
-- **Disease/symptom associations** come from per-disease symptom *frequency*
-  across the dataset's training rows (not the old code's lossy
-  `.groupby().max()` collapse), so a symptom present in only some of a
-  disease's rows is distinguishable from one present in all of them.
-- **Enrichment fields** (`causes`, `prevention`, `when_to_see_doctor`, etc.)
-  are left `NULL` for the migrated data — there was no real source for them
-  in the original project, and generating plausible-sounding text for them
-  would be exactly the kind of fabrication this schema exists to avoid.
-  They're there for data you actually have a source for.
-- **Every migrated disease has a `source`** field crediting the original
-  dataset/project, not a fabricated citation.
-- **This app does not fabricate large disease datasets from scratch.** The
-  150-disease expansion (below) is real curated data with citations, not
-  generated filler, and it's explicitly marked as needing clinical review
-  — see the next section.
+<br />
 
-### The 150-disease expansion's data quality
+The bundled migration ports the project's original dataset faithfully — nothing was invented to pad it out, and nothing was dropped:
 
-`backend/data/expansion/*.xlsx` adds 150 diseases / 360 symptoms / 750
-mappings, citing MedlinePlus and Columbia's Disease-Symptom Knowledge
-Database. Every record in this dataset carries its own
-`verification_status`, and it is **"Needs source-backed enrichment/clinical
-review before production"** for all of it — not a claim of clinical
-validation. **Do not present the combined ~188-disease dataset as clinically
-validated** — a large fraction of it explicitly isn't yet. Descriptions for
-all 150 new diseases are blank on import for the same no-fabrication reason
-as the original migration.
+- **Disease/symptom associations** come from per-disease symptom *frequency* across the dataset's training rows, so a symptom present in only some of a disease's rows is distinguishable from one present in all of them.
+- **Enrichment fields** (`causes`, `prevention`, `when_to_see_doctor`, etc.) are left `NULL` for the migrated data — there was no real source for them in the original project, and generating plausible-sounding text would be exactly the kind of fabrication this schema exists to avoid.
+- **Every migrated disease has a `source`** field crediting the original dataset, not a fabricated citation.
+- **This app does not fabricate large disease datasets from scratch.** The optional 150-disease expansion is real curated data with citations (MedlinePlus, Columbia's Disease-Symptom Knowledge Database) — not generated filler — and every record in it carries its own `verification_status` of *"Needs source-backed enrichment/clinical review before production."*
 
-### Dirty-data findings
+**Do not present this dataset as clinically validated.** The architecture scales to hundreds of diseases; the data is a real but explicitly-unvalidated starter set for a meaningful fraction of it.
 
-Found and fixed while building the migrations:
+### Dirty-data findings (found and fixed during migration)
 
-- `Training.csv`'s header lists `fluid_overload` **twice** — an upstream
-  duplication. Both columns correctly collapse to one `Symptom` row (their
-  disease links are unioned, nothing lost), so the true unique symptom count
-  from the original dataset is **131**, not 132.
-- The raw CSV has `"Hypertension "` (trailing space) as a prognosis value,
-  and the original `DISEASE_INFO` dict separately had `"Diabetes "`
-  (trailing space, not matching the CSV's clean `"Diabetes"` at all). Both
-  would have silently ended up with a `NULL` description without
-  normalization — fixed by stripping both sides before matching.
-- Within-disease symptom frequencies in the original dataset are almost all
-  95-100% — there's little genuine common-vs-rare variation to capture, so
-  `is_common`/`weight` mostly saturate for that data. The schema is ready
-  for richer data where that distinction matters more.
-- The 150-disease expansion overlaps the original dataset on 2 diseases
-  under a different casing (`"Hepatitis A"` vs `"hepatitis A"`, `"Common
-  cold"` vs `"Common Cold"`) and 1 under a different spelling — the
-  original dataset has `"Osteoarthristis"` (not a real medical term, a typo
-  baked into the original data) where the expansion correctly has
-  `"Osteoarthritis"`. All three were merged into the existing row (with the
-  correct spelling added as an alias) rather than duplicated; see
-  `DISEASE_MERGE_MAP` in `scripts/import_disease_expansion.py`. 6 symptom
-  names were similarly merged as true synonyms (`diarrhea`/`diarrhoea`,
-  `blisters`/`blister`, etc.) — and several superficially similar pairs
-  were deliberately **not** merged because they're medically distinct
-  (`eye_pain` vs `knee_pain`, `lower_abdominal_pain` vs generic
-  `abdominal_pain`) — see `SYMPTOM_MERGE_MAP` in the same file for the full,
-  reasoned list.
+- The source CSV's header lists one symptom column **twice** — an upstream duplication, correctly collapsed to a single `Symptom` row with its disease links unioned, so the true unique symptom count is 131, not 132.
+- The raw CSV and the original curated-description dict had inconsistent trailing whitespace on disease names (`"Hypertension "`, `"Diabetes "`) that would have silently produced a `NULL` description without normalization — fixed by stripping both sides before matching.
+- The optional expansion dataset overlaps the base dataset on a few diseases under different casing or a dataset typo (`"Osteoarthristis"` vs. the correct `"Osteoarthritis"`) — all merged into the existing row (with the correct spelling preserved as an alias) rather than duplicated.
+
+</details>
 
 ---
 
 ## ⚡ Performance
 
-Ranking queries filter by `symptom_id IN (...)` against indexed columns
-rather than iterating every disease, and the app no longer trains a model
-from a CSV at every boot (the old `sklearn` decision tree did — that
-dependency has been removed entirely). The symptom vocabulary used for
-Gemini-constrained extraction is cached in-process after first load; if it
-grows very large (several hundred+ symptoms) that vocabulary dump is worth
-revisiting, but at the current dataset size it's a trivial ~1-2KB of prompt
-text.
+Ranking queries filter by `symptom_id IN (...)` against indexed columns rather than iterating every disease, and the app does not train a model from a CSV at every boot. The symptom vocabulary used for Gemini-constrained extraction is cached in-process after first load.
 
 ---
 
-## 🚀 Running locally
+## 🚀 Getting Started
 
 ### Backend
 
@@ -327,13 +331,10 @@ python -m venv .venv
 source .venv/Scripts/activate   # or .venv/bin/activate on macOS/Linux
 pip install -r requirements-dev.txt   # includes pytest; use requirements.txt for prod-only
 cp .env.example .env            # then fill in GEMINI_API_KEY if you have one
-python scripts/seed_diseases.py # populate the disease knowledge base
 python app.py
 ```
 
-Runs on `http://localhost:5000`. Without `GEMINI_API_KEY` set, the app still
-works fully — symptom extraction and phrasing just fall back to the local,
-zero-cost logic.
+Runs on `http://localhost:5000`. **No manual seed step needed** — on a fresh, empty database, `create_app()` automatically seeds the knowledge base from the bundled dataset on first boot. Without `GEMINI_API_KEY` set, the app still works fully — symptom extraction and phrasing just fall back to the local, zero-cost logic.
 
 ### Frontend
 
@@ -346,17 +347,6 @@ npm run dev
 
 Runs on `http://localhost:5173`.
 
-### Running tests
-
-```bash
-cd backend
-python -m pytest tests/ -v
-```
-
-Runs entirely offline against a temporary SQLite database — no real Gemini
-API calls are made (a couple of tests monkeypatch `gemini_client` to
-simulate a failing call and assert the fallback still works).
-
 ### Getting a free Gemini API key
 
 1. Go to [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
@@ -365,7 +355,18 @@ simulate a failing call and assert the fallback still works).
 
 ---
 
-## 🔌 API endpoints
+## 🧪 Testing
+
+```bash
+cd backend
+python -m pytest tests/ -v
+```
+
+**73 tests**, covering symptom matching/aliasing, disease ranking, the full `/api/chat` pipeline, emergency detection, authentication, reminders, the disease-expansion importer, and first-boot auto-seeding. Runs entirely offline against a temporary SQLite database — no real Gemini API calls are made (several tests monkeypatch `gemini_client` to simulate a failing call and assert the fallback still works correctly).
+
+---
+
+## 🔌 API Reference
 
 | Endpoint | Method | Auth | Notes |
 |---|---|---|---|
@@ -382,49 +383,20 @@ simulate a failing call and assert the fallback still works).
 
 ---
 
-## 📦 Deploying
+## 📦 Deployment
 
-- **Backend**: any Python host works (`Procfile` runs
-  `gunicorn --workers 2 --threads 4 --timeout 30 app:app` — threaded so a
-  slow Gemini call can't block unrelated requests). Set `DATABASE_URL` to a
-  real Postgres instance (e.g. a free tier on
-  [Supabase](https://supabase.com) or [Neon](https://neon.tech)) — most free
-  hosts (Render, Railway, Heroku) reset the local filesystem on every
-  deploy, which would wipe a SQLite file and every account/reminder/disease
-  row in it. Run `python scripts/seed_diseases.py` once against the
-  production database after first deploy, then
-  `python scripts/import_disease_expansion.py` for the 150-disease
-  expansion. Also set `JWT_SECRET`, `GEMINI_API_KEY`, and `CORS_ORIGINS`
-  (comma-separated list of your frontend's origin(s)).
-- **Frontend**: static build (`npm run build`) deploys anywhere (Vercel,
-  Netlify, etc.). Set `VITE_API_URL` to your deployed backend's URL.
+- **Backend**: any Python host works (`Procfile` runs `gunicorn --workers 2 --threads 4 --timeout 30 app:app` — threaded so a slow Gemini call can't block unrelated requests). Set `DATABASE_URL` to a real Postgres instance — most free hosts reset the local filesystem on every deploy, which would wipe a SQLite file. The app **auto-seeds the base knowledge base on first boot** against an empty database; run `python scripts/import_disease_expansion.py` afterward if you also want the optional 150-disease expansion. Also set `JWT_SECRET`, `GEMINI_API_KEY`, and `CORS_ORIGINS` (comma-separated list of your frontend's origin(s)).
+- **Frontend**: static build (`npm run build`) deploys anywhere (Vercel, Netlify, etc.). Set `VITE_API_URL` to your deployed backend's URL. This project's frontend is deployed on Vercel; the backend on Render.
 
 ---
 
 ## ⚠️ Limitations
 
-- **188 diseases, not 1000+, and most of it needs clinical review.** The
-  architecture scales; the data is a real but explicitly-unvalidated
-  starter set for 147 of those 188 — see
-  [Medical data quality](#-medical-data-quality). Do not present this as a
-  clinically validated dataset.
-- **Gemini grounding is prompt-enforced, not runtime-guaranteed.** The
-  explanation prompt explicitly lists the only condition names Gemini may
-  mention, but an LLM can still occasionally deviate from instructions —
-  there's no automated post-hoc check that its prose never names anything
-  outside that list.
-- **No real database migrations tool.** `schema_sync.py` auto-adds missing
-  *nullable* columns to an existing table (what made the disease-expansion
-  schema change work against an already-deployed database without wiping
-  it) but it can't alter or rename an existing column, backfill a NOT NULL
-  addition, or drop anything. Introducing Alembic is a reasonable next step
-  before the schema needs a change that isn't purely additive.
-- **Symptom aliases are hand-curated, not exhaustive.** ~30 of the original
-  131 symptoms have conversational aliases seeded; the 320 symptoms added
-  by the expansion have none yet beyond their own display name. Extend
-  `data/symptom_aliases_seed.py` (or add an `alias` value in future
-  expansion data) and re-run the relevant seed script — no code changes
-  needed.
+- **A real but explicitly-unvalidated dataset.** The architecture scales to hundreds of diseases; a meaningful fraction of the optional expansion data needs clinical review before it should be treated as validated — see [Medical data quality](#-medical-data-quality).
+- **Gemini grounding is prompt-enforced, not runtime-guaranteed.** The explanation prompt explicitly lists the only condition names Gemini may mention, but an LLM can still occasionally deviate from instructions — there's no automated post-hoc check that its prose never names anything outside that list.
+- **No real database migrations tool.** `schema_sync.py` auto-adds missing *nullable* columns to an existing table, but it can't alter or rename an existing column, backfill a `NOT NULL` addition, or drop anything. Introducing Alembic is a reasonable next step before the schema needs a non-additive change.
+- **Symptom aliases are hand-curated, not exhaustive.** A subset of the base symptom set has conversational aliases seeded; symptoms added by the optional expansion have none yet beyond their own display name.
+- **Client-side routing on static hosts needs a rewrite rule.** As a React Router SPA, deep links (e.g. `/signup` loaded directly, not navigated to from within the app) require the host to rewrite unmatched paths to `index.html` — otherwise a direct load 404s while in-app navigation still works fine.
 
 ---
 
