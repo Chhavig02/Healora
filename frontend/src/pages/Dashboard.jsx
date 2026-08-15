@@ -169,12 +169,14 @@ export default function Dashboard({ onOpenChat }) {
             <form className="reminder-form" onSubmit={submit}>
               <input
                 placeholder="Medication name *"
+                aria-label="Medication name"
                 value={form.medication_name}
                 onChange={(e) => setForm({ ...form, medication_name: e.target.value })}
                 required
               />
               <input
                 placeholder="Dosage (e.g. 500mg)"
+                aria-label="Dosage"
                 value={form.dosage}
                 onChange={(e) => setForm({ ...form, dosage: e.target.value })}
               />
@@ -191,6 +193,7 @@ export default function Dashboard({ onOpenChat }) {
               </select>
               <input
                 placeholder="Notes"
+                aria-label="Notes"
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />
