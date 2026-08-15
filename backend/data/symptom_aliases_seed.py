@@ -23,6 +23,9 @@ SYMPTOM_ALIASES_SEED = {
         "high temperature",
         "burning up",
         "running a temperature",
+        "bukhar",
+        "bukhar hai",
+        "tez bukhar",
     ],
     "mild_fever": [
         "slight fever",
@@ -35,6 +38,9 @@ SYMPTOM_ALIASES_SEED = {
         "my head hurts",
         "pain in head",
         "head pain",
+        "sir dard",
+        "sir mein dard",
+        "sar dard",
     ],
     "joint_pain": [
         "joints hurt",
@@ -52,6 +58,9 @@ SYMPTOM_ALIASES_SEED = {
         "shortness of breath",
         "trouble breathing",
         "hard to breathe",
+        "saans lene me dikkat",
+        "saans lene mein dikkat",
+        "saans phoolna",
     ],
     "stomach_pain": [
         "stomach hurts",
@@ -111,6 +120,8 @@ SYMPTOM_ALIASES_SEED = {
     "cough": [
         "coughing",
         "coughing a lot",
+        "khansi",
+        "khaansi",
     ],
     "fatigue": [
         "tired",

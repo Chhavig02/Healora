@@ -228,17 +228,17 @@ def test_gemini_output_cannot_change_the_ranking_decision(expansion_ctx):
 
     before_d, before_s = Disease.query.count(), Symptom.query.count()
 
-    original = chat_module._gemini_extract_symptoms
-    chat_module._gemini_extract_symptoms = lambda user_input, vocab_names: [
-        "not_a_real_symptom",
-        "attempted_injection",
+    original = chat_module._gemini_extract_structured
+    chat_module._gemini_extract_structured = lambda user_input, vocab_names: [
+        ("not_a_real_symptom", True),
+        ("attempted_injection", True),
     ]
     try:
         poisoned = client.post(
             "/api/chat", json={"message": "test", "answers": answers}
         ).get_json()
     finally:
-        chat_module._gemini_extract_symptoms = original
+        chat_module._gemini_extract_structured = original
 
     assert poisoned["next_step"]["disease"] == baseline_disease
     assert Disease.query.count() == before_d

@@ -14,6 +14,7 @@ export default function ChatWidget({ open, onClose }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [answers, setAnswers] = useState([]);
+  const [convState, setConvState] = useState(null);
   const [currentStep, setCurrentStep] = useState(null);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
@@ -38,12 +39,14 @@ export default function ChatWidget({ open, onClose }) {
     setAnswers(ua);
 
     try {
-      const d = await api.chat(msg, ua, token);
+      const d = await api.chat(msg, ua, token, convState);
       if (d.answers) setAnswers(d.answers);
+      if (d.state !== undefined) setConvState(d.state);
 
       if (d.emergency) {
         setMessages((p) => [...p, { sender: 'bot', type: 'emergency', text: d.message }]);
         setAnswers([]);
+        setConvState(null);
         setCurrentStep(null);
         setLoading(false);
         return;
@@ -53,10 +56,19 @@ export default function ChatWidget({ open, onClose }) {
       if (d.next_step) {
         setCurrentStep(d.next_step);
         if (d.next_step.type === 'question') {
-          setMessages((p) => [...p, { sender: 'bot', text: d.next_step.symptom, opts: true }]);
+          setMessages((p) => [
+            ...p,
+            { sender: 'bot', text: d.next_step.symptom, opts: d.next_step.answer_mode === 'yes_no' },
+          ]);
         } else if (d.next_step.type === 'result') {
           setMessages((p) => [...p, { sender: 'bot', type: 'result', data: d.next_step }]);
+          // Keep `answers`/`state` — the conversation continues (follow-up
+          // questions, or a genuinely new symptom later); only the pending
+          // yes/no question is cleared.
+          setCurrentStep(null);
+        } else if (d.next_step.type === 'reset') {
           setAnswers([]);
+          setConvState(null);
           setCurrentStep(null);
         }
       }

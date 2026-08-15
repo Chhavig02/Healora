@@ -47,8 +47,8 @@ export const api = {
   deleteReminder: (token, id) =>
     request(`/api/reminders/${id}`, { method: 'DELETE', token }),
 
-  chat: (message, answers, token) =>
-    request('/api/chat', { method: 'POST', body: { message, answers }, token }),
+  chat: (message, answers, token, state) =>
+    request('/api/chat', { method: 'POST', body: { message, answers, state }, token }),
   getSymptoms: () => request('/api/symptoms'),
   getTip: () => request('/api/tips'),
 

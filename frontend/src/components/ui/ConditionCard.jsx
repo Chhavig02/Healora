@@ -14,6 +14,8 @@ function MatchBadge({ strength }) {
 export default function ConditionCard({ data }) {
   const alternates = (data.possible_conditions || []).filter((c) => c.name !== data.disease);
   const matchedSymptoms = data.symptoms_present || [];
+  const deniedSymptoms = data.symptoms_denied || [];
+  const uncertainSymptoms = data.uncertain_symptoms || [];
 
   return (
     <div className="condition-card">
@@ -29,6 +31,7 @@ export default function ConditionCard({ data }) {
         </div>
       </div>
 
+      {data.symptom_summary && <p className="condition-card-desc">{data.symptom_summary}</p>}
       {data.description && <p className="condition-card-desc">{data.description}</p>}
 
       {matchedSymptoms.length > 0 && (
@@ -36,6 +39,17 @@ export default function ConditionCard({ data }) {
           {matchedSymptoms.map((s, i) => (
             <li key={i}>
               <span className="condition-symptom-check" aria-hidden="true">✓</span>
+              {s}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {deniedSymptoms.length > 0 && (
+        <ul className="condition-symptom-list">
+          {deniedSymptoms.map((s, i) => (
+            <li key={i}>
+              <span className="condition-symptom-check" aria-hidden="true" style={{ color: 'var(--gray-light)' }}>✕</span>
               {s}
             </li>
           ))}
@@ -53,6 +67,24 @@ export default function ConditionCard({ data }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {uncertainSymptoms.length > 0 && (
+        <div className="condition-alternates">
+          <div className="condition-alternates-label">Still uncertain</div>
+          <p className="condition-card-desc" style={{ marginBottom: 0 }}>
+            {uncertainSymptoms.join(', ')}
+          </p>
+        </div>
+      )}
+
+      {data.next_step_recommendation && (
+        <div className="condition-alternates">
+          <div className="condition-alternates-label">Recommended next step</div>
+          <p className="condition-card-desc" style={{ marginBottom: 0 }}>
+            {data.next_step_recommendation}
+          </p>
         </div>
       )}
 

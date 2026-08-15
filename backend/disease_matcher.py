@@ -20,6 +20,25 @@ MAX_QUESTIONS = 6
 MAX_CANDIDATES_FOR_QUESTIONS = 5
 RESULT_LIST_SIZE = 5
 
+# Deterministic, severity-derived next-step copy — not a fabricated
+# clinical recommendation, just a plain-language nudge tied to the same
+# Disease.severity_label the UI already surfaces via MatchBadge.
+_NEXT_STEP_BY_SEVERITY = {
+    "critical": (
+        "Please seek medical care soon — these symptoms warrant prompt "
+        "evaluation by a healthcare professional."
+    ),
+    "high": "It's a good idea to see a doctor soon to discuss these symptoms.",
+    "medium": (
+        "Consider checking in with a healthcare professional, especially if "
+        "symptoms persist or worsen."
+    ),
+    "low": (
+        "Monitor your symptoms and consult a healthcare professional if they "
+        "persist, worsen, or you're concerned."
+    ),
+}
+
 
 def _match_strength(score):
     if score >= STRONG_SCORE:
@@ -211,6 +230,14 @@ def get_next_step(answers):
         "match_strength": top["match_strength"],
         "symptoms": top["matched_symptoms"] + top["possible_missing_symptoms"],
         "symptoms_present": [n.replace("_", " ") for n in yes_names],
+        "symptoms_denied": [n.replace("_", " ") for n in no_names],
+        # Common symptoms of the top candidate that are neither confirmed
+        # nor denied yet — i.e. what's still genuinely uncertain about this
+        # assessment, not a probability estimate.
+        "uncertain_symptoms": top["possible_missing_symptoms"],
+        "next_step_recommendation": _NEXT_STEP_BY_SEVERITY.get(
+            top["severity"], _NEXT_STEP_BY_SEVERITY["low"]
+        ),
         "possible_conditions": [
             {
                 "name": c["name"],
@@ -218,6 +245,10 @@ def get_next_step(answers):
                 "risk": c["risk"],
                 "severity": c["severity"],
                 "match_strength": c["match_strength"],
+                # Why this candidate is being considered — the specific
+                # confirmed symptoms it shares with the user, so the
+                # "differential" reads as reasoned rather than asserted.
+                "matched_symptoms": c["matched_symptoms"],
             }
             for c in ranked
         ],

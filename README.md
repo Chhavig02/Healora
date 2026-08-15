@@ -51,15 +51,17 @@
 
 ## What is Healora?
 
-Healora is a full-stack health-tech application that helps people put words to what they're feeling and understand what it might mean — without pretending to be a doctor.
+Healora is a full-stack health-tech application that helps people put words to what they're feeling and understand what it might mean — without pretending to be a doctor. It's built as a genuine multi-turn conversation, not a single-shot symptom form: it remembers what you've already said, asks only the follow-up questions that are still relevant, and understands interruptions ("what medicine should I take?") without losing the thread.
 
-A user describes their symptoms **in plain, natural language** ("I have a fever and headache"). Healora:
+A user describes their symptoms **in plain, natural language** ("I have a fever and headache", or in Hinglish — "mujhe bukhar hai, khansi nahi hai"). Healora:
 
-1. Normalizes that free text into known, canonical symptom names — using a fast local matcher first, with Gemini as an optional NLP layer for phrasing that the local matcher can't resolve on its own.
-2. Matches the resulting symptom set against a **structured, relational disease/symptom knowledge base** (not a hardcoded list), ranking candidate conditions by weighted symptom overlap.
-3. Asks a targeted follow-up question when the signal isn't strong enough yet, or presents ranked **possible conditions** — each with a qualitative match strength, never a fabricated percentage.
-4. Runs every message through an **independent emergency-safety check** first, before any database lookup or model call, so a phrase like "chest pain" or "can't breathe" is never held up waiting on an AI response.
-5. Wraps every explanation in **educational framing**, grounded only in facts the database actually contains — Gemini writes the prose, but never decides the medical facts.
+1. Normalizes that free text into known, canonical symptom names — a fast local matcher first (clause-aware, so it correctly separates "fever **but no** cough" into present/absent), with Gemini as an optional NLP layer for phrasing the local matcher can't resolve on its own.
+2. Tracks a structured **conversation state** across turns — chief complaint, duration/severity/onset, confirmed and denied symptoms, volunteered context (age, sex, medications, allergies, existing conditions), and which conversational phase it's in — round-tripped through the client each request rather than stored server-side (see [Architecture](#-architecture)).
+3. Matches the resulting symptom set against a **structured, relational disease/symptom knowledge base** (not a hardcoded list), ranking candidate conditions by weighted symptom overlap.
+4. Asks a targeted follow-up question when the signal isn't strong enough yet, or presents a **differential assessment** — a short summary, positive/negative symptoms, ranked possible conditions each with *why* it's being considered, what's still uncertain, and a recommended next step — always framed as possibilities to discuss with a doctor, never a diagnosis.
+5. Understands **intent, not just keywords** — a message mid-conversation can be a new symptom, an answer, a medication question, a general health question ("Why does fever happen?"), or a request to restart, and gets routed accordingly instead of forcing everything through the symptom pipeline.
+6. Runs every message through an **independent emergency-safety check** first, before any database lookup or model call, so a phrase like "chest pain" or "can't breathe" is never held up waiting on an AI response — and this decision can never be seen or overridden by Gemini.
+7. Wraps every explanation in **educational framing**, grounded only in facts the database actually contains — Gemini writes the prose, but never decides the medical facts, invents a condition name, or recommends a medication/dosage.
 
 Everything above is real, running code — described in detail (with file references) further down this document.
 
@@ -109,15 +111,22 @@ A hardcoded, Gemini-independent check intercepts emergency phrasing before anyth
 
 ## ✨ Key Features
 
-- 💬 **Natural-language symptom input** — describe how you feel in your own words, no medical jargon required.
+- 💬 **Natural-language symptom input** — describe how you feel in your own words, no medical jargon required, including common Hinglish phrasing ("sir dard ho raha hai", "khansi nahi hai").
+- 🧵 **Multi-turn conversation memory** — a structured `conversation_state` (chief complaint, duration/severity/onset, confirmed/denied symptoms, volunteered age/sex/medications/allergies/existing conditions, conversation phase) survives across `/api/chat` requests without a server-side session — the client round-trips it each turn, the same pattern the original `answers` list already used.
+- 🙅 **Clause-aware negation** (`negation.py`) — "I have fever but no cough" correctly records fever present, cough denied, instead of one negation flag applied to the whole message. Handles English lead-ins ("don't have", "no") and the Hinglish postpositive particle ("nahi"/"nahin").
+- 🔀 **Intent-aware routing, not just keyword matching** (`intent_classifier.py`) — distinguishes a new symptom, an answer to a pending question, a medication question, a general health question, or a restart request — and a user can interrupt a pending question ("what medicine should I take?") without the conversation losing its place.
+- 🎯 **Deterministic follow-up question engine** — history-taking (duration/severity/onset) runs once per complaint (`history_taking.py`), then `disease_matcher.py`'s information-gain question selection takes over, capped at a configurable question budget — never re-asking something already answered.
+- 🧭 **Differential assessment, not a verdict** — results include a short symptom summary, positive *and* negative symptoms, each candidate condition's specific matched symptoms ("why it's being considered"), what's still uncertain, and a severity-derived recommended next step — always "possible conditions to discuss with a doctor," never "you have X."
+- ❓ **General health questions answered on their own terms** — "What is migraine?", "Why does fever happen?", "What should I do for dehydration?" are recognized and answered (grounded in the disease database when a known condition is named, scoped general-education guardrails otherwise) instead of forcing everything through the symptom pipeline.
 - 🧠 **Local symptom extraction** — a deterministic, three-pass matcher (`symptom_engine.py`) resolves free text to canonical symptom names using exact phrase, multi-word, and fuzzy-typo matching. Always available, zero external calls, zero cost.
-- 🔤 **Symptom normalization & aliases** — conversational phrasings ("my joints hurt", "can't breathe properly") map to canonical symptom names via a curated `SymptomAlias` table.
+- 🔤 **Symptom normalization & aliases** — conversational phrasings ("my joints hurt", "can't breathe properly", "bukhar") map to canonical symptom names via a curated `SymptomAlias` table.
 - 🗄️ **Structured disease/symptom knowledge base** — `Disease`, `Symptom`, and `DiseaseSymptom` are database rows with weighted, many-to-many links, not a hardcoded Python dict.
 - 📊 **Weighted disease matching & ranking** — `disease_matcher.py` scores every candidate disease by matched vs. contradicted symptom weight; nothing in this module is disease-specific.
 - ✅ **Possible-condition results** — ranked, qualitative match strength ("possible" / "moderate" / "strong"), never a numeric confidence score.
-- 🚨 **Independent emergency detection** — a fixed keyword check runs before any database query or Gemini call, and its decision is final.
-- 🤖 **Gemini NLP layer** — used for symptom-name extraction, natural follow-up question phrasing, and grounded result explanations. Never the source of medical truth — see [The Gemini boundary](#-the-gemini-boundary).
-- 🔁 **Graceful Gemini fallback** — every Gemini call degrades to a deterministic local fallback if no API key is configured, the call fails, or the response fails shape validation. The app is fully functional with zero AI calls.
+- 🚨 **Independent emergency detection** — a fixed keyword check runs before any database query, conversation-state update, or Gemini call, and its decision is final — nothing downstream, including the intent classifier, can override or soften it.
+- 💊 **Safe medication handling** — medication/dosage questions always get a fixed, never-Gemini-generated guardrail message, since the schema has no verified treatment data to ground a real answer in.
+- 🤖 **Gemini NLP layer** — used for intent classification, negation-aware symptom extraction, natural follow-up question phrasing, grounded result explanations, and history summarization. Never the source of medical truth — see [The Gemini boundary](#-the-gemini-boundary).
+- 🔁 **Graceful Gemini fallback** — every Gemini call degrades to a deterministic local fallback if no API key is configured, the call fails, times out, rate-limits, or returns a malformed/invalid response. The app is fully functional with zero AI calls.
 - 🌱 **Automatic knowledge-base initialization** — on a fresh database, the app seeds itself from the bundled dataset on first boot; no manual migration step required to get a working instance.
 - 🔐 **Authentication** — JWT-based email/password signup and login.
 - 📋 **User dashboard** — quick actions, recent-activity surface, and reminders in one place.
@@ -164,17 +173,22 @@ backend/
 ├── models.py                 User/Reminder/ChatMessage + Disease/Symptom/DiseaseSymptom
 ├── auth.py, reminders.py,
 │   chat.py, diseases.py      Flask blueprints
+├── conversation_state.py     Structured, stateless multi-turn conversation state
+├── intent_classifier.py      Intent routing (new symptom / answer / medication / general question / restart / ...)
+├── negation.py                Clause-aware negation splitting (English + Hinglish)
+├── profile_extraction.py     Age/sex/medications/allergies/existing-conditions extraction
+├── history_taking.py         Generic duration/severity/onset follow-up questions
 ├── disease_matcher.py        Generic, DB-driven ranking + adaptive follow-up questions
 ├── symptom_engine.py         Free-text → canonical symptom name matching
 ├── emergency.py              Independent, keyword-based emergency detection
 ├── gemini_client.py          Gemini wrapper + the "Gemini boundary" contract
 ├── health_tips.py            Daily wellness tip (AI or curated fallback)
 ├── schema_sync.py            Additive auto-migration (adds missing nullable columns)
-├── data/                     Legacy dataset descriptions + curated symptom aliases
+├── data/                     Legacy dataset descriptions + curated symptom/ambiguous-term aliases
 ├── scripts/
 │   ├── seed_diseases.py      Idempotent CSV/JSON → database importer
 │   └── import_disease_expansion.py   Optional 150-disease dataset merge
-└── tests/                    73-test pytest suite
+└── tests/                    130-test pytest suite
 
 frontend/
 └── src/
@@ -214,6 +228,23 @@ Three passes, in order, all backed by the `Symptom`/`SymptomAlias` tables (no ha
 
 </details>
 
+<details>
+<summary><strong>The conversation layer — state, phases, negation, intent routing</strong></summary>
+
+<br />
+
+The chat pipeline is stateless server-side, same as the rest of this backend — `conversation_state.py` defines a plain dict (`chief_complaint`, `duration`/`severity`/`onset`, `age`/`sex`, volunteered `medications`/`allergies`/`existing_conditions`, `current_primary_condition`, `conversation_stage`, `questions_asked`, `conversation_summary`, ...) that the client sends back on every request alongside `answers`, rather than a server-side session store. `answers` (`[[symptom_name, bool], ...]`) stays the single source of truth for confirmed/denied symptoms — the state dict never duplicates it.
+
+**Conversation phases** (`conversation_stage`): `GREETING → CHIEF_COMPLAINT → HISTORY_TAKING → SYMPTOM_CLARIFICATION → FOLLOW_UP`, with `EMERGENCY`, `GENERAL_QUESTION`, and `COMPLETED` as phases a conversation can enter at any point when the user interrupts the normal flow.
+
+**Intent routing** (`intent_classifier.py`) decides what a message *is* before deciding what to do with it — `NEW_SYMPTOM`, `SYMPTOM_ANSWER`, `HISTORY_ANSWER`, `MEDICATION_QUESTION`, `QUESTION_ABOUT_CONDITION`, `CAUSE_QUESTION`, `RESTART`, and more. Gemini-assisted when configured, but always backed by a deterministic keyword/regex fallback — every test in this codebase runs against that fallback, since it's the floor the app has to guarantee with no API key. A pending question (a history slot or a yes/no symptom question) doesn't blindly consume the next message as its answer: a genuinely new symptom, an unrelated question, or "restart" are all recognized as interruptions first, and the interrupted response gently reminds the user what was being asked so the thread isn't lost.
+
+**Negation** (`negation.py`) splits a message into clauses (on "but"/"however"/punctuation) and classifies each clause independently, so "I have fever but no cough" records fever present *and* cough denied — not one negation flag applied to everything. Recognizes English lead-ins ("don't have", "never had") and the Hinglish postpositive particle ("khansi **nahi** hai"). Gemini's own extraction is asked for the same present/absent structure, but only ever fills in a symptom the deterministic splitter missed entirely — it can't override a local determination.
+
+**Profile context** (`profile_extraction.py`) recognizes clearly-stated volunteered details — age ("I'm 34"), sex, medications ("I'm taking metformin"), allergies, and a curated list of chronic conditions — and remembers them for the rest of the conversation. Purely additive (never overwrites a value already given) and, like the rest of conversation state, never written to the database.
+
+</details>
+
 ---
 
 ## 🤖 The Gemini Boundary
@@ -223,13 +254,16 @@ Gemini is the language layer only — it is never Healora's source of medical tr
 | Rule | How it's enforced |
 |---|---|
 | Gemini never creates/edits a `Disease` or `Symptom` row | Only `scripts/seed_diseases.py` writes to those tables; no code path lets a Gemini response reach `db.session.add()` |
-| Symptom names Gemini extracts are validated | `chat.py`'s `_gemini_extract_symptoms` filters every returned item against the real `Symptom` table; unresolved items are discarded and logged, never inserted |
+| Symptom names Gemini extracts are validated | `chat.py`'s `_gemini_extract_structured` filters every returned item against the real `Symptom` table; unresolved items are discarded and logged, never inserted |
 | An unresolved symptom can't discard a valid one | Extraction is a per-item filter, not an all-or-nothing check — one bad term never drops the good ones alongside it |
+| Gemini can't invent negation either | Its present/absent extraction only ever fills in a symptom the deterministic clause splitter (`negation.py`) didn't already find — it never overrides a local determination |
 | Disease ranking is Gemini-free | `disease_matcher.py` only reads the database; which disease is presented is decided *before* Gemini is ever called |
 | Explanations are grounded, not generated from scratch | The result-explanation prompt includes the specific `Disease` row's fields and explicitly lists the only condition names Gemini is allowed to mention |
-| Emergency detection is fully independent | `emergency.py` has no Gemini dependency and runs before any database lookup or model call; its decision is final |
+| Intent classification can't touch emergency | `intent_classifier.py` never runs until *after* `emergency.py` has already returned — there's no code path where a classified intent can suppress or soften an emergency response |
+| General health questions are scoped, not open-ended | Questions unrelated to any tracked complaint or named disease (e.g. "why does fever happen?") get a distinct, narrower system instruction permitting only well-established general education — never a medication name/dosage or a diagnosis |
+| Emergency detection is fully independent | `emergency.py` has no Gemini dependency and runs before any database lookup, conversation-state update, or model call; its decision is final |
 | JSON responses are shape-validated | `gemini_client.generate_json` accepts a `validator` callable; a shape mismatch is treated exactly like an API failure |
-| Every Gemini call has a bounded fallback | No API key, a failed call, a timeout, or a bad response all resolve to the same deterministic local fallback — never an error shown to the user |
+| Every Gemini call has a bounded fallback | No API key, a failed call, a timeout, a rate limit, or a malformed response all resolve to the same deterministic local fallback — never an error shown to the user |
 
 This is enforced by code structure and prompt constraints, not a guarantee against every possible model deviation — see [Limitations](#-limitations).
 
@@ -362,7 +396,7 @@ cd backend
 python -m pytest tests/ -v
 ```
 
-**73 tests**, covering symptom matching/aliasing, disease ranking, the full `/api/chat` pipeline, emergency detection, authentication, reminders, the disease-expansion importer, and first-boot auto-seeding. Runs entirely offline against a temporary SQLite database — no real Gemini API calls are made (several tests monkeypatch `gemini_client` to simulate a failing call and assert the fallback still works correctly).
+**130 tests**, covering symptom matching/aliasing, disease ranking, the full `/api/chat` conversation pipeline (multi-turn memory, negation — English and Hinglish, intent switching/interruption, general health questions, restart, differential-assessment structure), emergency detection, authentication, reminders, the disease-expansion importer, and first-boot auto-seeding. Runs entirely offline against a temporary SQLite database — no real Gemini API calls are made; a dedicated set of tests monkeypatches `gemini_client` to simulate no API key, a timeout, a rate limit, and a malformed/invalid response, asserting the deterministic fallback holds in every case.
 
 ---
 
@@ -370,7 +404,7 @@ python -m pytest tests/ -v
 
 | Endpoint | Method | Auth | Notes |
 |---|---|---|---|
-| `/api/chat` | POST | optional | `{message, answers}` → `{message, next_step, answers, emergency}`. `answers` is `[[symptom_name, bool], ...]`. `next_step.type` is `question`, `result`, `emergency`, `waiting`, or `reset`. |
+| `/api/chat` | POST | optional | `{message, answers, state}` → `{message, next_step, answers, state, emergency}`. `answers` is `[[symptom_name, bool], ...]`; `state` is the conversation-state dict (see [Architecture](#-architecture)) — round-trip whatever the previous response returned. `next_step.type` is `question`, `result`, `emergency`, `waiting`, or `reset`. A `result` step includes the full differential-assessment payload: `symptom_summary`, `symptoms_present`/`symptoms_denied`, `possible_conditions` (each with `matched_symptoms`), `uncertain_symptoms`, and `next_step_recommendation`, all additive to the original contract. |
 | `/api/symptoms` | GET | — | All known symptom display names |
 | `/api/diseases` | GET | — | Paginated/searchable disease list (`?q=`, `?page=`, `?page_size=`) |
 | `/api/diseases/<id>` | GET | — | Full disease detail including its symptom links |
@@ -385,8 +419,9 @@ python -m pytest tests/ -v
 
 ## 📦 Deployment
 
-- **Backend**: any Python host works (`Procfile` runs `gunicorn --workers 2 --threads 4 --timeout 30 app:app` — threaded so a slow Gemini call can't block unrelated requests). Set `DATABASE_URL` to a real Postgres instance — most free hosts reset the local filesystem on every deploy, which would wipe a SQLite file. The app **auto-seeds the base knowledge base on first boot** against an empty database; run `python scripts/import_disease_expansion.py` afterward if you also want the optional 150-disease expansion. Also set `JWT_SECRET`, `GEMINI_API_KEY`, and `CORS_ORIGINS` (comma-separated list of your frontend's origin(s)).
-- **Frontend**: static build (`npm run build`) deploys anywhere (Vercel, Netlify, etc.). Set `VITE_API_URL` to your deployed backend's URL. This project's frontend is deployed on Vercel; the backend on Render.
+- **Backend**: any Python host works (`Procfile` runs `gunicorn --workers 2 --threads 4 --timeout 30 app:app` — threaded so a slow Gemini call can't block unrelated requests). Set `DATABASE_URL` to a real Postgres instance — most free hosts reset the local filesystem on every deploy, which would wipe a SQLite file. `config.py` normalizes Render/Heroku-style `postgres://` URLs to the `postgresql://` scheme SQLAlchemy 1.4+/psycopg2 expect, so pointing `DATABASE_URL` at a Render Postgres instance works without further changes. The app **auto-seeds the base knowledge base on first boot** against an empty database; run `python scripts/import_disease_expansion.py` afterward if you also want the optional 150-disease expansion. Also set `JWT_SECRET`, `GEMINI_API_KEY`, and `CORS_ORIGINS` (comma-separated list of your frontend's origin(s)).
+  - The conversation layer (chief complaint, history, negation, profile context, ...) adds **no new tables or columns** — it's stateless and client-round-tripped exactly like the pre-existing `answers` list, so it has no bearing on the database schema or a Postgres migration.
+- **Frontend**: static build (`npm run build`) deploys anywhere (Vercel, Netlify, etc.). Set `VITE_API_URL` to your deployed backend's URL. This project's frontend is deployed on Vercel; the backend on Render, backed by Render's managed Postgres.
 
 ---
 
@@ -395,7 +430,9 @@ python -m pytest tests/ -v
 - **A real but explicitly-unvalidated dataset.** The architecture scales to hundreds of diseases; a meaningful fraction of the optional expansion data needs clinical review before it should be treated as validated — see [Medical data quality](#-medical-data-quality).
 - **Gemini grounding is prompt-enforced, not runtime-guaranteed.** The explanation prompt explicitly lists the only condition names Gemini may mention, but an LLM can still occasionally deviate from instructions — there's no automated post-hoc check that its prose never names anything outside that list.
 - **No real database migrations tool.** `schema_sync.py` auto-adds missing *nullable* columns to an existing table, but it can't alter or rename an existing column, backfill a `NOT NULL` addition, or drop anything. Introducing Alembic is a reasonable next step before the schema needs a non-additive change.
-- **Symptom aliases are hand-curated, not exhaustive.** A subset of the base symptom set has conversational aliases seeded; symptoms added by the optional expansion have none yet beyond their own display name.
+- **Symptom aliases are hand-curated, not exhaustive.** A subset of the base symptom set has conversational aliases seeded (including a small set of common Hinglish phrasings); symptoms added by the optional expansion have none yet beyond their own display name.
+- **Negation splitting handles the documented cases, not full sentence parsing.** Clauses split on "but"/"however"/"although"/"though" and punctuation — a construction like "fever and no cough" (no "but") isn't split into separate clauses today, so a negation joined with a bare "and" can be missed. Hindi duration phrasing ("3 din se") is kept as raw text rather than parsed into a structured value, same as any duration answer that doesn't cleanly reduce to a number.
+- **Profile-context extraction (age/sex/medications/allergies/conditions) is curated regex, not open-ended NLP** — deliberately, in the same spirit as the symptom-alias table, but it will miss phrasings outside the patterns it recognizes rather than guessing.
 - **Client-side routing on static hosts needs a rewrite rule.** As a React Router SPA, deep links (e.g. `/signup` loaded directly, not navigated to from within the app) require the host to rewrite unmatched paths to `index.html` — otherwise a direct load 404s while in-app navigation still works fine.
 
 ---
