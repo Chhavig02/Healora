@@ -10,17 +10,29 @@ Healora's response to a message should be.
          |    anything below — see emergency.py)
          +--> Volunteered profile context capture (age/sex/medications/
          |    allergies/existing conditions — see profile_extraction.py)
-         +--> Intent classification (intent_classifier.py) — Gemini-assisted,
-         |    always backed by a deterministic fallback
-         +--> Route to the capability that intent actually needs:
+         +--> Semantic interpretation (semantic_interpreter.py) — Gemini-
+         |    assisted, always backed by a deterministic fallback. Produces
+         |    a structured interpretation (a `meaning` bucket plus
+         |    context-aware signals like "does this actually answer the
+         |    pending question", improvement/worsening), not just a flat
+         |    intent string — see that module's own docstring for why.
+         +--> Route to the capability that interp["meaning"] actually needs:
                 - GREETING / RESTART / CASUAL -> light response, no engine
                 - HISTORY_ANSWER / SYMPTOM_ANSWER -> apply the answer to the
-                  existing assessment, then continue it
+                  existing assessment (plus any new symptom content in the
+                  same message — never mutually exclusive with answering
+                  the pending question), then continue it
                 - MEDICATION / PRECAUTION / DIET / HOME_CARE / RECOVERY /
                   SEVERITY / CAUSE / DURATION / QUESTION_ABOUT_CONDITION
                   question -> one shared contextual-answer capability,
                   grounded in conversation state + (if resolved) a specific
                   Disease row's own facts. Never touches the disease engine.
+                - SYMPTOMS_WORSENING / FEELING_BETTER -> an update about how
+                  things are trending, not a question — grounded in the
+                  active condition's facts when one exists, never a fresh
+                  disease-engine run.
+                - EMOTIONAL_CONCERN -> warm, contextual support via the
+                  open-conversation capability, no medical content invented.
                 - NEW_SYMPTOM -> extract symptoms (negation-aware), merge
                   into `answers`, continue the assessment. This — plus the
                   SYMPTOM_ANSWER/HISTORY_ANSWER paths above — are the ONLY
@@ -35,14 +47,19 @@ Healora's response to a message should be.
          v
     response dict (message, next_step, answers, state, emergency)
 
-Root problem this module fixes: previously, any message that didn't match
-one of a handful of narrow intents (missing "medicines?" due to a plural-
-matching regex bug, missing "what should I eat?" entirely, etc.) fell
-through to re-invoking the disease engine on unchanged `answers` — which
-regenerates the same question or re-shows the same result card, reads as
-"the bot forgot what we were talking about", and is exactly the behavior
-this module exists to prevent. The disease engine itself (disease_matcher.py)
-is untouched; this only changes when it gets called.
+Root problem this module (plus semantic_interpreter.py) fixes: previously,
+any message that didn't match one of a handful of narrow intents (missing
+"medicines?" due to a plural-matching regex bug, missing "what should I
+eat?" entirely, etc.) fell through to re-invoking the disease engine on
+unchanged `answers` — which regenerates the same question or re-shows the
+same result card, reads as "the bot forgot what we were talking about".
+That specific bug is fixed, but the underlying pattern kept recurring: a
+new phrasing shows up ("tierd", "now I am fine"), and the fix was one more
+regex or branch bolted onto this file. semantic_interpreter.py exists so a
+new phrasing generalizes from what it means in context instead of needing
+its own patch — this file still owns every actual decision about what to
+do with that meaning, and the disease engine itself (disease_matcher.py)
+is untouched either way.
 """
 
 import json
@@ -55,13 +72,13 @@ import disease_matcher
 import history_taking
 import negation
 import profile_extraction
+import semantic_interpreter
 import symptom_engine
 from data.ambiguous_terms import find_clarification
 from emergency import EMERGENCY_MESSAGE, detect_emergency
 from extensions import db
 from gemini_client import generate_json, generate_text, is_available
 from intent_classifier import CASUAL_RE
-from intent_classifier import classify as classify_intent
 from models import ChatMessage, Disease
 
 logger = logging.getLogger(__name__)
@@ -537,6 +554,10 @@ def _conversation_context_block(state, answers):
         lines.append(
             f"- Top possible condition from Healora's structured matcher: {state['current_primary_condition']}"
         )
+    if state.get("user_reported_worsening"):
+        lines.append("- The user just indicated their symptoms are getting worse.")
+    if state.get("user_reported_improvement"):
+        lines.append("- The user just indicated their symptoms are improving.")
     others = [
         c for c in (state.get("current_possible_conditions") or []) if c != state.get("current_primary_condition")
     ]
@@ -706,35 +727,19 @@ def _resolve_followup_target(message, state):
 # History taking (duration / severity / onset) + pending-question reminders
 # ---------------------------------------------------------------------------
 
-# duration/severity/onset are free-text slots (see history_taking.py) — a
-# reply that doesn't parse cleanly is stored verbatim rather than getting
-# the conversation stuck re-asking. That's the right floor for a genuinely
-# odd-but-real answer ("since forever", "on and off"), but it means a
-# message that isn't actually attempting to answer the question at all —
-# a new (possibly misspelled) symptom the fast local check upstream didn't
-# catch — would otherwise get swallowed as if it were the literal
-# duration/severity/onset. This gate is checked before that happens: only
-# a reply with *no* recognizable time/severity wording gets a second look.
-_DURATION_ONSET_CUE_RE = re.compile(
-    r"\d|day|week|month|year|hour|minute|since|ago|yesterday|today|"
-    r"morning|evening|night|now|sudden|gradual|start|began|"
-    r"few|couple|while|long time|on and off|forever", re.I
-)
-_SEVERITY_CUE_RE = re.compile(
-    r"\d|mild|moderate|severe|worse|worst|manageable|unbearable|scale|out of", re.I
-)
-
-
-def _looks_like_history_answer(slot, text):
-    if slot == "severity":
-        return bool(_SEVERITY_CUE_RE.search(text))
-    return bool(_DURATION_ONSET_CUE_RE.search(text))
+# The "does this message actually look like an answer to the pending
+# duration/severity/onset question" cue-word check now lives in
+# semantic_interpreter.py (interp["answers_pending_question"]) — moved, not
+# duplicated, since it's squarely a semantic-interpretation question, and
+# the orchestrator's HISTORY_ANSWER branch below needs it alongside (not
+# instead of) an unconditional check for new symptom content.
 
 
 def _ask_history_question(state):
     slot = cs.next_history_slot(state)
     state["pending_history_slot"] = slot
     state["pending_symptom_question"] = None
+    state["pending_question_type"] = slot
     state["conversation_stage"] = "HISTORY_TAKING"
     fallback_text = history_taking.question_for_slot(slot)
     question_text = _phrase_history_question(slot, state, fallback_text) if is_available() else fallback_text
@@ -799,6 +804,7 @@ def _continue_matching(answers, state, user):
         next_step["answer_mode"] = "yes_no"
         state["pending_symptom_question"] = next_step["raw_symptom"]
         state["pending_history_slot"] = None
+        state["pending_question_type"] = "symptom"
         state["conversation_stage"] = "SYMPTOM_CLARIFICATION"
         if is_available():
             confirmed = [a[0] for a in answers if a[1]]
@@ -809,6 +815,7 @@ def _continue_matching(answers, state, user):
     elif next_step["type"] == "result":
         state["pending_symptom_question"] = None
         state["pending_history_slot"] = None
+        state["pending_question_type"] = None
         state["conversation_stage"] = "FOLLOW_UP"
         state["current_primary_condition"] = next_step["disease"]
         state["current_possible_conditions"] = [c["name"] for c in next_step["possible_conditions"]]
@@ -932,50 +939,74 @@ def handle_message(user_input, answers, state, user):
 
     vocab_names = symptom_engine.get_all_symptom_names()
     local_symptoms = symptom_engine.extract_symptoms_keyword(lower_input)
-    intent = classify_intent(user_input, state, vocab_names, local_symptoms)
+    interp = semantic_interpreter.interpret(user_input, state, vocab_names, local_symptoms)
+    intent = interp["meaning"]
+    # Applied uniformly, regardless of which branch below ends up handling
+    # the rest of the message — a worsening/improvement statement is a
+    # real signal even in a message whose main content is a new symptom
+    # report or a contextual question (see semantic_interpreter.py's
+    # module docstring on why these are independent flags, not restricted
+    # to one meaning value each).
+    state["user_reported_improvement"] = bool(interp["user_reported_improvement"])
+    state["user_reported_worsening"] = bool(interp["user_reported_worsening"])
+    if interp.get("topic"):
+        state["current_topic"] = interp["topic"]
 
     _log_message(user, "user", user_input, local_symptoms)
 
     # --- Answering a pending open history question (duration/severity/onset)
     if intent == "HISTORY_ANSWER" and state.get("pending_history_slot"):
         slot = state["pending_history_slot"]
-        if not _looks_like_history_answer(slot, user_input):
-            # Doesn't read as an attempt to answer the question at all —
-            # before accepting it as the literal duration/severity/onset
-            # verbatim, check whether it's actually a new symptom (a typo
-            # the fast local check upstream missed, e.g. "tierd") using
-            # the same negation-aware extraction the main symptom path
-            # uses. Only take this detour if it actually finds something;
-            # a message that's neither a plausible answer nor a
-            # recognizable symptom still falls through to the original
-            # "store it anyway" floor below rather than getting stuck.
-            new_positive, new_negative = _extract_symptoms_with_negation(user_input, vocab_names)
-            new_positive = [s for s in new_positive if not any(a[0] == s for a in answers)]
-            new_negative = [s for s in new_negative if not any(a[0] == s for a in answers)]
-            if new_positive or new_negative:
-                for s in new_positive:
-                    answers.append([s, True])
-                for s in new_negative:
-                    answers.append([s, False])
-                parts = []
-                if new_positive:
-                    parts.append("you have: " + ", ".join(s.replace("_", " ") for s in new_positive))
-                if new_negative:
-                    parts.append("you don't have: " + ", ".join(s.replace("_", " ") for s in new_negative))
-                note = "I've also noted that " + "; and ".join(parts) + "."
-                return {
-                    "message": _with_pending_reminder(note, state),
-                    "next_step": {"type": "waiting"},
-                    "answers": answers,
-                    "state": state,
-                    "emergency": False,
-                }
+        # Symptom content is checked unconditionally now, not only when the
+        # message "doesn't look like" an answer — a message can do both at
+        # once ("about three days, and I also feel dizzy" both answers the
+        # duration question AND reports a new symptom; the old
+        # either/or gate silently dropped whichever one it didn't pick).
+        new_positive, new_negative = _extract_symptoms_with_negation(user_input, vocab_names)
+        new_positive = [s for s in new_positive if not any(a[0] == s for a in answers)]
+        new_negative = [s for s in new_negative if not any(a[0] == s for a in answers)]
+        for s in new_positive:
+            answers.append([s, True])
+        for s in new_negative:
+            answers.append([s, False])
+
+        symptom_note = None
+        if new_positive or new_negative:
+            parts = []
+            if new_positive:
+                parts.append("you have: " + ", ".join(s.replace("_", " ") for s in new_positive))
+            if new_negative:
+                parts.append("you don't have: " + ", ".join(s.replace("_", " ") for s in new_negative))
+            symptom_note = "I've also noted that " + "; and ".join(parts) + "."
+
+        answers_slot = interp["answers_pending_question"]
+        # Neither a recognizable answer nor a new symptom — the original
+        # "store it anyway" floor: a genuinely odd-but-real free-text
+        # answer still has to go somewhere rather than getting the
+        # conversation stuck re-asking.
+        if not answers_slot and not symptom_note:
+            answers_slot = True
+
+        if not answers_slot:
+            return {
+                "message": _with_pending_reminder(symptom_note, state),
+                "next_step": {"type": "waiting"},
+                "answers": answers,
+                "state": state,
+                "emergency": False,
+            }
+
         value = history_taking.parse_slot_answer(slot, user_input)
         state[slot] = value
         state["history_slots_asked"] = list(set((state.get("history_slots_asked") or []) + [slot]))
         state["pending_history_slot"] = None
+        state["pending_question_type"] = None
         result = _continue_matching(answers, state, user)
-        result["message"] = f"Got it — noting {slot}: {value}." if value else None
+        base_message = f"Got it — noting {slot}: {value}." if value else None
+        if symptom_note:
+            result["message"] = f"{base_message} {symptom_note}" if base_message else symptom_note
+        else:
+            result["message"] = base_message
         return result
 
     # --- Free-text yes/no answer to a pending symptom question
@@ -1038,6 +1069,75 @@ def handle_message(user_input, answers, state, user):
             fallback="That's great to hear! Let me know if anything changes or comes back.",
         )
         return {"message": text, "next_step": {"type": "waiting"}, "answers": answers, "state": state, "emergency": False}
+
+    # --- "It's getting worse" / "the fever came back" — an update that
+    # things are deteriorating, not resolved and not a new question. Only
+    # reached when no actual new symptom was named (NEW_SYMPTOM always
+    # wins over this — see semantic_interpreter.py); user_reported_worsening
+    # is still set above regardless of which branch handles the message.
+    # Grounded in the active condition's own facts (when one exists) so
+    # "escalate when appropriate" means pointing at real data, never a
+    # fabricated re-diagnosis — the disease engine itself is never
+    # re-invoked here, same principle as the contextual-answer capability
+    # below.
+    if intent == "SYMPTOMS_WORSENING":
+        disease_row = None
+        if state.get("current_primary_condition"):
+            disease_row = disease_matcher.get_disease_by_name(state["current_primary_condition"])
+        if disease_row is not None:
+            _facts, facts_block = _facts_block(disease_row)
+            prompt = (
+                f'The user said: "{user_input}" — their symptoms seem to be getting worse '
+                "or returning, in an ongoing health conversation. Verified facts about the "
+                f"possible condition being discussed:\n{facts_block}\n"
+                "Reply warmly in 2-3 sentences: acknowledge this, and gently encourage "
+                "seeing a healthcare professional sooner given the worsening trend. Do not "
+                "name any other condition, and do not claim a diagnosis."
+            )
+            fallback = (
+                "I'm sorry to hear that. Since things seem to be getting worse, it's a "
+                "good idea to check in with a healthcare professional sooner rather than later."
+            )
+        else:
+            prompt = (
+                f'The user just said: "{user_input}" — their symptoms seem to be getting '
+                "worse or returning, in an ongoing health conversation. Reply warmly and "
+                "briefly (1-2 sentences), and gently encourage seeing a healthcare "
+                "professional if things continue to worsen. No generic medical advice "
+                "beyond that."
+            )
+            fallback = (
+                "I'm sorry to hear that — if things keep getting worse, it's a good idea "
+                "to check in with a healthcare professional."
+            )
+        text = generate_text(prompt, fallback=fallback)
+        return {
+            "message": _with_pending_reminder(text, state),
+            "next_step": {"type": "waiting"},
+            "answers": answers,
+            "state": state,
+            "emergency": False,
+        }
+
+    # --- Fear/worry/anxiety about the situation, with no new medical
+    # content — warm, contextual support via the same open-conversation
+    # capability UNCLEAR-with-no-active-context uses below, not the more
+    # clinical, fact-bound contextual-answer capability (see
+    # OPEN_CONVERSATION_SYSTEM_INSTRUCTION rule 4). Only reachable via the
+    # LLM path today — the deterministic fallback never emits this meaning
+    # on its own (see semantic_interpreter._fallback_interpret), since
+    # "I'm scared" already resolves correctly through the existing UNCLEAR
+    # floor with no dedicated regex needed.
+    if intent == "EMOTIONAL_CONCERN":
+        state["current_topic"] = interp.get("topic") or "emotional_concern"
+        answer_text = _answer_open_conversation(user_input, state, answers, mode="general")
+        return {
+            "message": _with_pending_reminder(answer_text, state),
+            "next_step": {"type": "waiting"},
+            "answers": answers,
+            "state": state,
+            "emergency": False,
+        }
 
     # --- Pregnancy is its own conversational domain — never forced through
     # the disease engine (see intent_classifier.PREGNANCY_RE). A message
@@ -1121,6 +1221,32 @@ def handle_message(user_input, answers, state, user):
                 "emergency": False,
             }
 
+        # A plain keyword match on a real symptom (e.g. "dizzy") always
+        # routes a message to NEW_SYMPTOM before it ever reaches the
+        # HISTORY_ANSWER branch above (see semantic_interpreter.py's
+        # _fallback_interpret, which — same as intent_classifier's
+        # existing behavior — only treats a pending history slot as
+        # possibly the whole story when no symptom keyword was found at
+        # all). Without this, "about three days, and I also feel dizzy"
+        # would record the dizziness but silently drop the duration answer
+        # and re-ask the same question — not a data-loss bug, but exactly
+        # the "doesn't feel like it remembers what I just said" friction
+        # this module exists to avoid. So: if a history slot is genuinely
+        # pending and this message also reads as answering it
+        # (interp["answers_pending_question"]), capture that too before
+        # falling through to _continue_matching, which would otherwise
+        # re-ask it.
+        history_note = None
+        pending_slot = state.get("pending_history_slot")
+        if pending_slot and interp["answers_pending_question"]:
+            slot_value = history_taking.parse_slot_answer(pending_slot, user_input)
+            state[pending_slot] = slot_value
+            state["history_slots_asked"] = list(set((state.get("history_slots_asked") or []) + [pending_slot]))
+            state["pending_history_slot"] = None
+            state["pending_question_type"] = None
+            if slot_value:
+                history_note = f"Got it — noting {pending_slot}: {slot_value}."
+
         parts = []
         if positive_symptoms:
             parts.append("you have: " + ", ".join(s.replace("_", " ") for s in positive_symptoms))
@@ -1135,7 +1261,7 @@ def handle_message(user_input, answers, state, user):
             note = "That's new information — let me reassess based on everything you've told me. " + note
         elif state.get("awaiting_more_detail") and positive_symptoms:
             note = "Thanks — let's go through this a bit more systematically. " + note
-        message = note
+        message = f"{history_note} {note}" if history_note else note
         # Formally enters structured mode: either this is genuinely the
         # first message of the conversation (`not had_prior_answers`), or
         # it's the message that finally gave enough detail after one or

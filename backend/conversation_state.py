@@ -67,6 +67,12 @@ _DEFAULT_STATE = {
     "conversation_stage": "GREETING",
     "pending_history_slot": None,
     "pending_symptom_question": None,
+    # Generalizes pending_history_slot/pending_symptom_question so a future
+    # pending-question kind doesn't need its own new state key — set
+    # alongside whichever of those two is actually populated (see
+    # semantic_interpreter.py / orchestrator.py). Purely descriptive; never
+    # branched on by itself.
+    "pending_question_type": None,
     "history_slots_asked": [],
     # Question text already asked this conversation (history-taking +
     # symptom-clarification), so the question-selection layer never repeats
@@ -81,6 +87,19 @@ _DEFAULT_STATE = {
     # assessment" flow. Lets a later message resume the transition into
     # structured mode even though `answers` is no longer empty.
     "awaiting_more_detail": False,
+    # A short free-text label for whatever the conversation is currently
+    # about (a symptom, "emotional_concern", "pregnancy", ...) — set by
+    # semantic_interpreter.interpret() for observability/context, never
+    # branched on by itself. Not a replacement for chief_complaint/
+    # current_primary_condition, which remain the authoritative fields.
+    "current_topic": None,
+    # Last-turn-only signal from semantic_interpreter.interpret() — whether
+    # the most recent message reported symptoms easing/resolving or
+    # worsening/returning. Overwritten every turn (not accumulated), and
+    # surfaced in _conversation_context_block so a later contextual answer
+    # can reflect it.
+    "user_reported_improvement": False,
+    "user_reported_worsening": False,
 }
 
 _LIST_FIELDS = (
@@ -115,6 +134,10 @@ def normalize(raw_state):
         state["emergency_status"] = False
     if not isinstance(state.get("awaiting_more_detail"), bool):
         state["awaiting_more_detail"] = False
+    if not isinstance(state.get("user_reported_improvement"), bool):
+        state["user_reported_improvement"] = False
+    if not isinstance(state.get("user_reported_worsening"), bool):
+        state["user_reported_worsening"] = False
     return state
 
 
@@ -153,6 +176,7 @@ def start_new_complaint(state, chief_complaint):
     state["severity"] = None
     state["progression"] = None
     state["pending_history_slot"] = None
+    state["pending_question_type"] = None
     state["history_slots_asked"] = []
     state["current_possible_conditions"] = []
     state["current_primary_condition"] = None
