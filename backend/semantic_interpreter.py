@@ -114,6 +114,31 @@ def _answers_pending_deterministic(state, stripped):
     return False
 
 
+def _reconcile(meaning, answers_pending, stripped):
+    """A message can only genuinely be HISTORY_ANSWER/SYMPTOM_ANSWER if it
+    actually reads as an attempt to answer what's pending. Both
+    intent_classifier._fallback_classify and the LLM prompt use
+    HISTORY_ANSWER as their own catch-all for "something's pending and
+    nothing more specific matched" — which is right for a genuinely
+    odd-but-real answer ("since forever", "I don't know"), but wrong for a
+    message that's actually a *question* ("What should I tell my
+    doctor?") that just happened to arrive while a slot was pending. Only
+    a question-shaped message is downgraded here (to the safe, generic
+    UNCLEAR bucket, which still preserves the pending-question reminder
+    via orchestrator.py's _with_pending_reminder) — a non-question,
+    non-answer message like "I'm scared." still falls through to the
+    original "store it anyway" floor, matching this app's pre-existing,
+    documented behavior for a genuinely ambiguous free-text answer.
+    Applied uniformly to both the deterministic fallback and the LLM
+    result (see interpret()), so a classification that's internally
+    inconsistent — HISTORY_ANSWER, but also says this doesn't actually
+    answer the pending question, and reads as a question itself — is
+    never trusted from either source."""
+    if meaning == "HISTORY_ANSWER" and not answers_pending and ic._QUESTION_LEAD_RE.search(stripped):
+        return "UNCLEAR"
+    return meaning
+
+
 def _fallback_interpret(text, state, vocab_names, local_symptoms):
     """The no-LLM floor — what every existing test exercises (conftest.py
     sets GEMINI_API_KEY="" for the whole suite), so this has to be
@@ -123,6 +148,8 @@ def _fallback_interpret(text, state, vocab_names, local_symptoms):
     a single string, plus the new worsening signal."""
     stripped = text.strip()
     meaning = ic._fallback_classify(text, state, vocab_names, local_symptoms)
+    answers_pending = _answers_pending_deterministic(state, stripped)
+    meaning = _reconcile(meaning, answers_pending, stripped)
 
     worsening = bool(_WORSENING_RE.search(stripped))
     improving = bool(ic._FEELING_BETTER_RE.search(stripped))
@@ -138,7 +165,7 @@ def _fallback_interpret(text, state, vocab_names, local_symptoms):
 
     return {
         "meaning": meaning,
-        "answers_pending_question": _answers_pending_deterministic(state, stripped),
+        "answers_pending_question": answers_pending,
         "user_reported_improvement": improving,
         "user_reported_worsening": worsening,
         "topic": topic,
@@ -214,6 +241,13 @@ def interpret(text, state, vocab_names, local_symptoms):
         "that don't describe a symptom are CASUAL, never a symptom.\n"
         "- Messages about pregnancy (including misspellings like 'pregnent') that don't "
         "also report an actual symptom are PREGNANCY.\n"
+        "- Do not default to HISTORY_ANSWER or SYMPTOM_ANSWER just because something is "
+        "pending. A question ('What should I tell my doctor?'), a request, or an "
+        "emotional statement that arrives while something is pending is NOT an answer to "
+        "it, even a bad one — use whatever meaning actually fits the message (a QUESTION "
+        "value, EMOTIONAL_CONCERN, CASUAL, etc.) with answers_pending_question false. "
+        "Only use HISTORY_ANSWER/SYMPTOM_ANSWER when the message plausibly attempts to "
+        "answer the pending question, even vaguely ('I don't know', 'on and off').\n"
         "- If genuinely unsure, use UNCLEAR — never guess NEW_SYMPTOM just because "
         "nothing else fits."
     )
@@ -223,9 +257,15 @@ def interpret(text, state, vocab_names, local_symptoms):
 
     topic = data.get("topic")
     confidence = data.get("confidence")
+    answers_pending = bool(data["answers_pending_question"])
+    # Same consistency check applied to the deterministic fallback (see
+    # _reconcile's docstring) — the LLM is guided against this in the
+    # prompt above, but its output is never trusted uncritically, same as
+    # every other LLM-proposed fact in this app.
+    meaning = _reconcile(data["meaning"], answers_pending, text.strip())
     return {
-        "meaning": data["meaning"],
-        "answers_pending_question": bool(data["answers_pending_question"]),
+        "meaning": meaning,
+        "answers_pending_question": answers_pending,
         "user_reported_improvement": bool(data["user_reported_improvement"]),
         "user_reported_worsening": bool(data["user_reported_worsening"]),
         "topic": topic if isinstance(topic, str) and topic.strip() else fallback["topic"],

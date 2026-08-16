@@ -116,6 +116,32 @@ def test_answers_pending_question_false_with_nothing_pending(app_ctx, seeded):
     assert interp["answers_pending_question"] is False
 
 
+# --- A question-shaped interruption must never be swallowed as the -------
+# literal pending-slot answer, even though intent_classifier._fallback_classify
+# uses HISTORY_ANSWER as its own catch-all when nothing more specific
+# matched (see semantic_interpreter._reconcile).
+
+
+def test_question_shaped_message_while_pending_is_not_history_answer(app_ctx, seeded):
+    state = cs.new_state()
+    state["chief_complaint"] = "headache"
+    state["pending_history_slot"] = "duration"
+    interp, _ = _interp("What should I tell my doctor?", state=state)
+    assert interp["meaning"] != "HISTORY_ANSWER"
+    assert interp["answers_pending_question"] is False
+
+
+def test_genuinely_ambiguous_answer_still_stored_via_original_floor(app_ctx, seeded):
+    # Not question-shaped, so the original "store it anyway" floor for a
+    # genuinely odd-but-real free-text answer still applies unchanged —
+    # this reconciliation only targets question-shaped interruptions.
+    state = cs.new_state()
+    state["chief_complaint"] = "headache"
+    state["pending_history_slot"] = "duration"
+    interp, _ = _interp("I don't really know", state=state)
+    assert interp["meaning"] == "HISTORY_ANSWER"
+
+
 # --- interpret() itself falls back cleanly with no provider configured ----
 
 
