@@ -212,7 +212,7 @@ def test_unknown_symptom_creates_no_database_record(expansion_ctx):
 
 
 def test_gemini_output_cannot_change_the_ranking_decision(expansion_ctx):
-    import chat as chat_module
+    import orchestrator
     from models import Disease, Symptom
 
     client = expansion_ctx.test_client()
@@ -228,8 +228,8 @@ def test_gemini_output_cannot_change_the_ranking_decision(expansion_ctx):
 
     before_d, before_s = Disease.query.count(), Symptom.query.count()
 
-    original = chat_module._gemini_extract_structured
-    chat_module._gemini_extract_structured = lambda user_input, vocab_names: [
+    original = orchestrator._gemini_extract_structured
+    orchestrator._gemini_extract_structured = lambda user_input, vocab_names: [
         ("not_a_real_symptom", True),
         ("attempted_injection", True),
     ]
@@ -238,7 +238,7 @@ def test_gemini_output_cannot_change_the_ranking_decision(expansion_ctx):
             "/api/chat", json={"message": "test", "answers": answers}
         ).get_json()
     finally:
-        chat_module._gemini_extract_structured = original
+        orchestrator._gemini_extract_structured = original
 
     assert poisoned["next_step"]["disease"] == baseline_disease
     assert Disease.query.count() == before_d

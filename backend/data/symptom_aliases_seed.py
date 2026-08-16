@@ -63,6 +63,7 @@ SYMPTOM_ALIASES_SEED = {
         "saans phoolna",
     ],
     "stomach_pain": [
+        "stomach",
         "stomach hurts",
         "my stomach hurts",
         "pain in stomach",

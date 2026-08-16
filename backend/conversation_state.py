@@ -75,6 +75,12 @@ _DEFAULT_STATE = {
     "emergency_status": False,
     "last_user_message": None,
     "conversation_summary": None,
+    # True while the conversation has mentioned only vague, non-specific
+    # symptom(s) (or none at all) and hasn't yet formally entered structured
+    # assessment — see orchestrator.py's "open conversation before
+    # assessment" flow. Lets a later message resume the transition into
+    # structured mode even though `answers` is no longer empty.
+    "awaiting_more_detail": False,
 }
 
 _LIST_FIELDS = (
@@ -107,6 +113,8 @@ def normalize(raw_state):
             state[key] = []
     if not isinstance(state.get("emergency_status"), bool):
         state["emergency_status"] = False
+    if not isinstance(state.get("awaiting_more_detail"), bool):
+        state["awaiting_more_detail"] = False
     return state
 
 

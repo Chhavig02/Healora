@@ -27,31 +27,63 @@ INTENTS = (
     "QUESTION_ABOUT_CONDITION",
     "MEDICATION_QUESTION",
     "PRECAUTION_QUESTION",
+    "DIET_QUESTION",
+    "HOME_CARE_QUESTION",
+    "RECOVERY_QUESTION",
     "SEVERITY_QUESTION",
     "CAUSE_QUESTION",
     "DURATION_QUESTION",
+    "PREGNANCY",
     "CASUAL",
     "RESTART",
     "UNCLEAR",
 )
 
+# Every regex below is checked with re.search against the raw (lowercased
+# by re.I) message — deliberately using `\w*` suffixes on the key stems
+# (medicine, precaution, ...) rather than a bare `\bmedicine\b` word match:
+# `\b` is a transition between a word and non-word character, so a plain
+# `\bmedicine\b` does NOT match inside "medicines" (there's no boundary
+# between the "e" and the "s", both word characters) — a real bug that
+# made "medicines?" fall through to UNCLEAR. Same issue applied to
+# "precautions". The `\w*` suffix fixes the whole family of plural/
+# inflected forms at once instead of enumerating each one.
 _GREETING_RE = re.compile(r"\b(hello|hi|hey|greetings|sup|what's up|start|checkup)\b", re.I)
 _RESTART_RE = re.compile(
     r"^\s*(restart|start over|start again|reset|begin again|new (check|conversation|chat))\b", re.I
 )
-_CASUAL_RE = re.compile(
+CASUAL_RE = re.compile(
     r"^\s*(thanks|thank you|thankyou|ok|okay|k|great|cool|good|nice|got it|alright|sure)\s*[!.]*\s*$",
     re.I,
+)
+# Affectionate/relationship small talk — phrased as full sentences, so it
+# needs its own (non-anchored) pattern rather than extending CASUAL_RE's
+# whole-message match. Routed to the same CASUAL handling: a warm,
+# non-medical reply that doesn't claim to be a real person or a romantic
+# partner — never symptom clarification.
+_AFFECTION_RE = re.compile(
+    r"\b(i love you|love you|i like you|i want to marry you|will you marry me|"
+    r"marry me|you'?re (the best|amazing|awesome|so sweet|so kind)|i miss you)\b",
+    re.I,
+)
+# A simple prefix is enough to tolerate the common misspelling "pregnent"
+# (and "pregnancy"/"preggo"/etc.) without needing fuzzy edit-distance
+# matching — "preg" is specific enough in English that this doesn't risk
+# false positives the way a broader fuzzy match would.
+_PREGNANCY_RE = re.compile(
+    r"\bpreg\w*\b|\bexpecting\b|\bmissed (my )?period\b|\bmaternity\b", re.I
 )
 _YES_RE = re.compile(r"^\s*(yes|yeah|yep|yup|correct|right)\b", re.I)
 _NO_RE = re.compile(r"^\s*(no|nope|nah|not really|not at all)\b", re.I)
 _MEDICATION_RE = re.compile(
-    r"\b(medicine|medication|drug|dose|dosage|pill|tablet|prescri\w*|antibiotic|painkiller)\b", re.I
+    r"\b(medicine\w*|medication\w*|drug\w*|doses?|dosage\w*|pill\w*|tablet\w*|"
+    r"prescri\w*|antibiotic\w*|painkiller\w*)\b",
+    re.I,
 )
 _SEVERITY_RE = re.compile(
-    r"\b(serious|severe|dangerous|worry|worried|concerning|bad sign|should i worry)\b", re.I
+    r"\b(serious\w*|severe\w*|dangerous|worr\w*|concerning|bad sign)\b|\bshould i worry\b", re.I
 )
-_CAUSE_RE = re.compile(r"\b(why|cause|reason|caused by)\b", re.I)
+_CAUSE_RE = re.compile(r"\b(why|cause\w*|reason\w*|caused by)\b", re.I)
 # Deliberately requires the fuller phrase, not a bare "last" or "go away" —
 # those words show up too easily in an ordinary history-taking answer
 # ("since last week", "it hasn't gone away") and would otherwise get
@@ -61,10 +93,28 @@ _DURATION_RE = re.compile(
     r"\bhow long\b|\bwhen will\b|\bhow many days\b|\bgo away\b|\bwill (?:it |this )?last\b", re.I
 )
 _PRECAUTION_RE = re.compile(
-    r"\b(precaution|what should i do|avoid|prevent|take care|self care|home remedy)\b", re.I
+    r"\b(precaution\w*|avoid\w*|prevent\w*|self.?care|home remedy\w*)\b|"
+    r"\bwhat should i (do|avoid)\b|\btake care\b",
+    re.I,
+)
+# Food/diet is a genuinely separate concern from precautions/prevention —
+# Healora has no dietary-data field on Disease, so this always answers from
+# general, non-condition-specific guidance (see orchestrator.py).
+_DIET_RE = re.compile(r"\b(eat\w*|diet\w*|food\w*|drink\w*|nutrition\w*)\b", re.I)
+# "What can I do at home" / "how do I manage this myself" — distinct from
+# PRECAUTION_QUESTION (which is about avoiding/preventing complications);
+# this is about self-management day to day.
+_HOME_CARE_RE = re.compile(
+    r"\bat home\b|\bhome care\b|\bmanage (?:this |it )?(?:myself|at home)\b|\bself.manage\w*\b", re.I
+)
+# "Can I go to work/school", "when can I go back to normal activity" — a
+# return-to-normal-life question, not a medical-fact question.
+_RECOVERY_RE = re.compile(
+    r"\bgo(?:ing)? to work\b|\bgo back to\b|\breturn to work\b|\bresume\w*\b|"
+    r"\bwhen can i\b|\bhow soon\b|\bback to normal\b|\bgo to school\b", re.I
 )
 _CONDITION_QUESTION_RE = re.compile(
-    r"\b(what is|what's|tell me about|explain|more about)\b", re.I
+    r"\b(what is|what's|tell me about|explain\w*|more about|what does\b.*\bmean)\b", re.I
 )
 _DOCTOR_RE = re.compile(r"\b(see a doctor|should i see|need a doctor|go to (the )?(er|hospital))\b", re.I)
 
@@ -86,16 +136,28 @@ def _yes_no(text):
 
 
 def _classify_interruption(stripped):
-    """Recognizes a message as one of the "informational question" intents,
-    independent of whatever else is going on in the conversation (a pending
-    question, an established condition, or neither). Returns None if it
-    doesn't match any of them."""
+    """Recognizes a message as one of the "informational question" intents
+    — MEDICATION_QUESTION, PRECAUTION_QUESTION, DIET_QUESTION,
+    HOME_CARE_QUESTION, RECOVERY_QUESTION, SEVERITY_QUESTION,
+    CAUSE_QUESTION, DURATION_QUESTION, QUESTION_ABOUT_CONDITION — independent
+    of whatever else is going on in the conversation (a pending question, an
+    established condition, or neither). Returns None if it doesn't match
+    any of them. All of these route through the same contextual-answer
+    capability in orchestrator.py; they're kept as separate intents only so
+    the right deterministic fallback and framing is picked when Gemini is
+    unavailable, not because each needs its own handling logic."""
     if _MEDICATION_RE.search(stripped):
         return "MEDICATION_QUESTION"
     if _SEVERITY_RE.search(stripped) or _DOCTOR_RE.search(stripped):
         return "SEVERITY_QUESTION"
     if _PRECAUTION_RE.search(stripped):
         return "PRECAUTION_QUESTION"
+    if _DIET_RE.search(stripped):
+        return "DIET_QUESTION"
+    if _HOME_CARE_RE.search(stripped):
+        return "HOME_CARE_QUESTION"
+    if _RECOVERY_RE.search(stripped):
+        return "RECOVERY_QUESTION"
     if _CAUSE_RE.search(stripped):
         return "CAUSE_QUESTION"
     if _DURATION_RE.search(stripped):
@@ -150,7 +212,7 @@ def _fallback_classify(text, state, vocab_names, local_symptoms):
     if _GREETING_RE.search(stripped):
         return "GREETING"
 
-    if _CASUAL_RE.match(stripped):
+    if CASUAL_RE.match(stripped) or _AFFECTION_RE.search(stripped):
         return "CASUAL"
 
     if local_symptoms:
@@ -158,6 +220,10 @@ def _fallback_classify(text, state, vocab_names, local_symptoms):
         # question ("Why does fever happen?") is read as the question, not
         # a fresh symptom report — an ordinary assertion ("I have fever")
         # isn't question-shaped and falls through to NEW_SYMPTOM as usual.
+        # A real symptom always wins over a pregnancy mention in the same
+        # message ("I'm pregnant and have severe abdominal pain" still
+        # reports abdominal_pain) — PREGNANCY is only reached below when
+        # no actual symptom was recognized.
         if _QUESTION_LEAD_RE.search(stripped):
             interrupting = _classify_interruption(stripped)
             if interrupting:
@@ -166,6 +232,14 @@ def _fallback_classify(text, state, vocab_names, local_symptoms):
         # breathlessness") — the pending_symptom branch above would have
         # caught anything genuinely new.
         return "SYMPTOM_ANSWER" if pending_symptom else "NEW_SYMPTOM"
+
+    # Pregnancy is its own conversational domain, not a symptom or a
+    # disease to match against — checked before the generic interruption
+    # patterns so "what is pregnancy?" / "pregnant symptoms" are read as
+    # PREGNANCY rather than a generic QUESTION_ABOUT_CONDITION with no
+    # resolvable disease.
+    if _PREGNANCY_RE.search(stripped):
+        return "PREGNANCY"
 
     interrupting = _classify_interruption(stripped)
     if interrupting:
@@ -208,7 +282,13 @@ def classify(text, state, vocab_names, local_symptoms):
         'Return strict JSON of the shape {"intent": "<ONE_OF_THE_INTENTS>"}. '
         "If the user is answering a yes/no question that was just asked, use SYMPTOM_ANSWER "
         "(for a symptom) or HISTORY_ANSWER (for duration/severity/onset). If they're describing "
-        "a new symptom, use NEW_SYMPTOM. If unsure, use UNCLEAR."
+        "a new symptom, use NEW_SYMPTOM. Casual, affectionate, or relationship-toned messages "
+        "('I love you', 'baby', small talk) that don't describe a symptom are CASUAL, never a "
+        "symptom — do not guess a symptom out of them. Messages about pregnancy (including "
+        "misspellings like 'pregnent') that don't also report an actual symptom are PREGNANCY. "
+        "Only use NEW_SYMPTOM when the message actually names or describes a bodily symptom. "
+        "If genuinely unsure what the user means and it isn't clearly one of the above, use "
+        "UNCLEAR — never guess NEW_SYMPTOM just because nothing else fits."
     )
     data = generate_json(prompt, fallback=None, validator=_is_intent_shape)
     if isinstance(data, dict):
