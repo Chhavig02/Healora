@@ -153,7 +153,7 @@ flowchart TD
     G --> H{Confident enough?}
     H -->|Not yet| I[Targeted follow-up question]
     H -->|Yes| J[Ranked possible conditions]
-    E -->|Medication / precaution / diet /<br/>home care / recovery / severity /<br/>cause / duration / "what is X?"| K[Contextual answer<br/>grounded in conversation state<br/>+ resolved Disease facts]
+    E -->|Medication / precaution / diet /<br/>home care / recovery / severity /<br/>cause / duration / condition explanation| K[Contextual answer<br/>grounded in conversation state<br/>+ resolved Disease facts]
     E -->|Greeting / casual / restart| L[Light response, no engine call]
     J --> M[Gemini-phrased explanation<br/>grounded only in DB facts]
     K --> N[Gemini-phrased contextual reply<br/>never invents a fact/drug/diagnosis]
