@@ -185,3 +185,38 @@ def test_diet_and_home_care_and_recovery_questions_are_contextual(client):
         assert resp["next_step"]["type"] == "waiting"
         assert resp["message"]
         assert "couldn't" not in resp["message"].lower()
+
+
+# Regression: a pending duration/severity/onset question must never
+# swallow an unrelated statement verbatim as the literal answer — "i am
+# feeling tierd" (a typo of "tired") was previously stored as the literal
+# duration.
+def test_typo_symptom_during_pending_duration_is_not_stored_as_duration(client):
+    data = _post(client, "I have stomach pain", [])
+    answers, state = data["answers"], data["state"]
+    assert state.get("pending_history_slot") == "duration"
+
+    data = _post(client, "i am feeling tierd", answers, state)
+    assert ["fatigue", True] in data["answers"]
+    # duration must still be pending, not corrupted with the typo message
+    assert data["state"].get("pending_history_slot") == "duration"
+    assert data["state"].get("duration") is None
+
+
+def test_llm_recognized_symptom_during_pending_history_is_not_stored_as_the_answer(client, monkeypatch):
+    import llm.gemini_provider as gemini_provider
+
+    data = _post(client, "I have stomach pain", [])
+    answers, state = data["answers"], data["state"]
+    assert state.get("pending_history_slot") == "duration"
+
+    monkeypatch.setattr(gemini_provider, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        gemini_provider,
+        "generate_json",
+        lambda *a, **kw: {"symptoms": [{"name": "fatigue", "present": True}]},
+    )
+    data = _post(client, "i am feeling xhausted", answers, state)
+    assert ["fatigue", True] in data["answers"]
+    assert data["state"].get("pending_history_slot") == "duration"
+    assert data["state"].get("duration") is None

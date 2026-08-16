@@ -126,6 +126,8 @@ SYMPTOM_ALIASES_SEED = {
     ],
     "fatigue": [
         "tired",
+        "tierd",
+        "tird",
         "exhausted",
         "no energy",
         "very tired",

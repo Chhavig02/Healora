@@ -706,6 +706,30 @@ def _resolve_followup_target(message, state):
 # History taking (duration / severity / onset) + pending-question reminders
 # ---------------------------------------------------------------------------
 
+# duration/severity/onset are free-text slots (see history_taking.py) — a
+# reply that doesn't parse cleanly is stored verbatim rather than getting
+# the conversation stuck re-asking. That's the right floor for a genuinely
+# odd-but-real answer ("since forever", "on and off"), but it means a
+# message that isn't actually attempting to answer the question at all —
+# a new (possibly misspelled) symptom the fast local check upstream didn't
+# catch — would otherwise get swallowed as if it were the literal
+# duration/severity/onset. This gate is checked before that happens: only
+# a reply with *no* recognizable time/severity wording gets a second look.
+_DURATION_ONSET_CUE_RE = re.compile(
+    r"\d|day|week|month|year|hour|minute|since|ago|yesterday|today|"
+    r"morning|evening|night|now|sudden|gradual|start|began|"
+    r"few|couple|while|long time|on and off|forever", re.I
+)
+_SEVERITY_CUE_RE = re.compile(
+    r"\d|mild|moderate|severe|worse|worst|manageable|unbearable|scale|out of", re.I
+)
+
+
+def _looks_like_history_answer(slot, text):
+    if slot == "severity":
+        return bool(_SEVERITY_CUE_RE.search(text))
+    return bool(_DURATION_ONSET_CUE_RE.search(text))
+
 
 def _ask_history_question(state):
     slot = cs.next_history_slot(state)
@@ -915,6 +939,37 @@ def handle_message(user_input, answers, state, user):
     # --- Answering a pending open history question (duration/severity/onset)
     if intent == "HISTORY_ANSWER" and state.get("pending_history_slot"):
         slot = state["pending_history_slot"]
+        if not _looks_like_history_answer(slot, user_input):
+            # Doesn't read as an attempt to answer the question at all —
+            # before accepting it as the literal duration/severity/onset
+            # verbatim, check whether it's actually a new symptom (a typo
+            # the fast local check upstream missed, e.g. "tierd") using
+            # the same negation-aware extraction the main symptom path
+            # uses. Only take this detour if it actually finds something;
+            # a message that's neither a plausible answer nor a
+            # recognizable symptom still falls through to the original
+            # "store it anyway" floor below rather than getting stuck.
+            new_positive, new_negative = _extract_symptoms_with_negation(user_input, vocab_names)
+            new_positive = [s for s in new_positive if not any(a[0] == s for a in answers)]
+            new_negative = [s for s in new_negative if not any(a[0] == s for a in answers)]
+            if new_positive or new_negative:
+                for s in new_positive:
+                    answers.append([s, True])
+                for s in new_negative:
+                    answers.append([s, False])
+                parts = []
+                if new_positive:
+                    parts.append("you have: " + ", ".join(s.replace("_", " ") for s in new_positive))
+                if new_negative:
+                    parts.append("you don't have: " + ", ".join(s.replace("_", " ") for s in new_negative))
+                note = "I've also noted that " + "; and ".join(parts) + "."
+                return {
+                    "message": _with_pending_reminder(note, state),
+                    "next_step": {"type": "waiting"},
+                    "answers": answers,
+                    "state": state,
+                    "emergency": False,
+                }
         value = history_taking.parse_slot_answer(slot, user_input)
         state[slot] = value
         state["history_slots_asked"] = list(set((state.get("history_slots_asked") or []) + [slot]))
