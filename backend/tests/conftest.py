@@ -15,9 +15,16 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_TMP_DB_PATH}"
 os.environ["JWT_SECRET"] = "test-secret-at-least-32-bytes-long-000000"
 # Empty, not popped: app.py's load_dotenv() only fills in keys that are
 # *absent* from the environment (override=False). A pop here would leave
-# GEMINI_API_KEY absent, and load_dotenv() would then load the real key
-# from backend/.env right back in — silently making tests hit the network.
+# these absent, and load_dotenv() would then load real values from
+# backend/.env right back in — silently making tests hit the network (or,
+# for the fallback provider, silently making llm.gateway.is_available()
+# true from a developer's locally-configured FALLBACK_API_KEY, which broke
+# every test asserting the no-provider-configured floor).
 os.environ["GEMINI_API_KEY"] = ""
+os.environ["FALLBACK_LLM_PROVIDER"] = ""
+os.environ["FALLBACK_API_KEY"] = ""
+os.environ["FALLBACK_BASE_URL"] = ""
+os.environ["FALLBACK_MODEL"] = ""
 
 import pytest  # noqa: E402
 

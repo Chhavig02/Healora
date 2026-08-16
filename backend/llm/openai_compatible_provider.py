@@ -101,6 +101,11 @@ def _post(payload):
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {_api_key()}",
+            # Some providers (Groq included) sit behind Cloudflare, whose
+            # WAF blocks the default "Python-urllib/x.y" user agent as
+            # bot-like traffic (a Cloudflare "error code: 1010") — a
+            # normal-looking UA avoids that, nothing more.
+            "User-Agent": "Healora-Backend/1.0 (+https://github.com/Chhavig02/Healora)",
         },
     )
     try:
