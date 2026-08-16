@@ -1026,6 +1026,19 @@ def handle_message(user_input, answers, state, user):
             )
         return {"message": text, "next_step": {"type": "waiting"}, "answers": answers, "state": state, "emergency": False}
 
+    # --- "I'm fine now" / "I feel better" — an update, not a question.
+    # Previously fell through to the generic post-result catch-all and got
+    # a flat "go see a doctor" reply that ignored what was actually said.
+    if intent == "FEELING_BETTER":
+        text = generate_text(
+            f'The user just said: "{user_input}" — they\'re saying their symptoms have eased or '
+            "resolved, in an ongoing health conversation. Reply warmly and briefly (1-2 sentences) — "
+            "glad to hear it, and mention they're welcome to come back if anything changes or returns. "
+            "No generic medical advice.",
+            fallback="That's great to hear! Let me know if anything changes or comes back.",
+        )
+        return {"message": text, "next_step": {"type": "waiting"}, "answers": answers, "state": state, "emergency": False}
+
     # --- Pregnancy is its own conversational domain — never forced through
     # the disease engine (see intent_classifier.PREGNANCY_RE). A message
     # that also names an actual symptom never reaches this branch at all

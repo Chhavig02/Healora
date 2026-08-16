@@ -203,6 +203,16 @@ def test_typo_symptom_during_pending_duration_is_not_stored_as_duration(client):
     assert data["state"].get("duration") is None
 
 
+def test_feeling_better_after_result_gets_a_warm_reply_not_generic_doctor_boilerplate(client):
+    data = _reach_a_result(client)
+    answers, state = data["answers"], data["state"]
+
+    data = _post(client, "now I am fine", answers, state)
+    assert data["next_step"]["type"] == "waiting"
+    assert "healthcare professional" not in data["message"].lower()
+    assert data["message"]
+
+
 def test_llm_recognized_symptom_during_pending_history_is_not_stored_as_the_answer(client, monkeypatch):
     import llm.gemini_provider as gemini_provider
 

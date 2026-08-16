@@ -35,6 +35,7 @@ INTENTS = (
     "DURATION_QUESTION",
     "PREGNANCY",
     "CASUAL",
+    "FEELING_BETTER",
     "RESTART",
     "UNCLEAR",
 )
@@ -64,6 +65,18 @@ CASUAL_RE = re.compile(
 _AFFECTION_RE = re.compile(
     r"\b(i love you|love you|i like you|i want to marry you|will you marry me|"
     r"marry me|you'?re (the best|amazing|awesome|so sweet|so kind)|i miss you)\b",
+    re.I,
+)
+# "I'm fine now" / "I feel better" — an update that symptoms have eased or
+# resolved, not a question and not a new symptom. Without recognizing this
+# on its own terms, it used to fall through to the generic post-result
+# catch-all and get a flat "go see a doctor" reply that ignored what was
+# actually said.
+_FEELING_BETTER_RE = re.compile(
+    r"\b(i'?m fine now|i am fine now|i'?m fine|i am fine|feeling fine|"
+    r"i'?m (feeling )?better|i am (feeling )?better|feel(?:ing)? better now|"
+    r"i'?m ok(?:ay)? now|i am ok(?:ay)? now|all good now|it'?s gone now|"
+    r"i'?m good now|no longer (have|feeling)|not anymore)\b",
     re.I,
 )
 # A simple prefix is enough to tolerate the common misspelling "pregnent"
@@ -215,6 +228,9 @@ def _fallback_classify(text, state, vocab_names, local_symptoms):
     if CASUAL_RE.match(stripped) or _AFFECTION_RE.search(stripped):
         return "CASUAL"
 
+    if _FEELING_BETTER_RE.search(stripped):
+        return "FEELING_BETTER"
+
     if local_symptoms:
         # A message that both names a symptom and is clearly phrased as a
         # question ("Why does fever happen?") is read as the question, not
@@ -286,6 +302,8 @@ def classify(text, state, vocab_names, local_symptoms):
         "('I love you', 'baby', small talk) that don't describe a symptom are CASUAL, never a "
         "symptom — do not guess a symptom out of them. Messages about pregnancy (including "
         "misspellings like 'pregnent') that don't also report an actual symptom are PREGNANCY. "
+        "A message saying symptoms have eased or resolved ('I'm fine now', 'I feel better') is "
+        "FEELING_BETTER, not a question to answer with generic medical advice. "
         "Only use NEW_SYMPTOM when the message actually names or describes a bodily symptom. "
         "If genuinely unsure what the user means and it isn't clearly one of the above, use "
         "UNCLEAR — never guess NEW_SYMPTOM just because nothing else fits."
